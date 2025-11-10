@@ -285,38 +285,80 @@
     }
 
     // ---------- VARIANTS RENDER ----------
-    function renderVariants(variants) {
-      variantsListEl.innerHTML = "";
-      if (!variants || variants.length === 0) {
-        const empty = document.createElement("li");
-        empty.className = "variant-empty";
-        empty.textContent = "Chưa có biến thể nào.";
-        variantsListEl.appendChild(empty);
-        return;
-      }
+    // function renderVariants(variants) {
+    //   variantsListEl.innerHTML = "";
+    //   if (!variants || variants.length === 0) {
+    //     const empty = document.createElement("li");
+    //     empty.className = "variant-empty";
+    //     empty.textContent = "Chưa có biến thể nào.";
+    //     variantsListEl.appendChild(empty);
+    //     return;
+    //   }
 
-      variants.forEach((v, idx) => {
-        const li = document.createElement("li");
-        li.className = "variant-row";
+    //   variants.forEach((v, idx) => {
+    //     const li = document.createElement("li");
+    //     li.className = "variant-row";
 
-        const meta = document.createElement("div");
-        meta.className = "variant-meta";
-        meta.innerHTML = `<strong>#${idx + 1}</strong><span>ID ${v.id}</span>`;
-        li.appendChild(meta);
+    //     const meta = document.createElement("div");
+    //     meta.className = "variant-meta";
+    //     meta.innerHTML = `<strong>#${idx + 1}</strong><span>ID ${v.id}</span>`;
+    //     li.appendChild(meta);
 
-        const codes = v.segments
-          .sort((a, b) => a.segment_index - b.segment_index)
-          .map((s) => `${s.segment_index}.${s.clip_index}`)
-          .join(", ");
+    //     const codes = v.segments
+    //       .sort((a, b) => a.segment_index - b.segment_index)
+    //       .map((s) => `${s.segment_index}.${s.clip_index}`)
+    //       .join(", ");
 
-        const codeEl = document.createElement("div");
-        codeEl.className = "variant-code";
-        codeEl.textContent = `[${codes}]`;
-        li.appendChild(codeEl);
+    //     const codeEl = document.createElement("div");
+    //     codeEl.className = "variant-code";
+    //     codeEl.textContent = `[${codes}]`;
+    //     li.appendChild(codeEl);
 
-        variantsListEl.appendChild(li);
-      });
-    }
+    //     variantsListEl.appendChild(li);
+    //   });
+    // }
+
+    // ---------- VARIANTS RENDER ----------
+function renderVariants(variants) {
+  variantsListEl.innerHTML = "";
+  if (!variants || variants.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "variant-empty";
+    empty.textContent = "Chưa có biến thể nào.";
+    variantsListEl.appendChild(empty);
+    return;
+  }
+
+  // Sắp xếp lại cho chắc: ID giảm dần => mới nhất lên đầu
+  const sorted = [...variants].sort((a, b) => b.id - a.id);
+  const total = sorted.length;
+
+  sorted.forEach((v, idx) => {
+    // Video - 1 là cũ nhất, Video - N là mới nhất
+    const videoNumber = total - idx;
+
+    const li = document.createElement("li");
+    li.className = "variant-row";
+
+    const meta = document.createElement("div");
+    meta.className = "variant-meta";
+    meta.innerHTML = `<strong>Video - ${videoNumber}</strong><span>ID ${v.id}</span>`;
+    li.appendChild(meta);
+
+    const codes = v.segments
+      .sort((a, b) => a.segment_index - b.segment_index)
+      .map((s) => `${s.segment_index}.${s.clip_index}`)
+      .join(", ");
+
+    const codeEl = document.createElement("div");
+    codeEl.className = "variant-code";
+    codeEl.textContent = `[${codes}]`;
+    li.appendChild(codeEl);
+
+    variantsListEl.appendChild(li);
+  });
+}
+
 
     // ---------- TẠO BIẾN THỂ MỚI ----------
     btnNewVariant.addEventListener("click", async () => {
