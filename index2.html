@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Video Variant Tool</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 0 16px;
+    }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    label { display: inline-block; margin-bottom: 8px; margin-right: 8px; }
+    input { padding: 4px 6px; }
+    button { padding: 6px 10px; margin-right: 6px; cursor: pointer; }
+    #variants { margin-top: 16px; font-family: "JetBrains Mono", Consolas, monospace; }
+    .variant-row { padding: 4px 0; border-bottom: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <h1>Video Variant Tool</h1>
+
+  <div>
+    <h2>Tạo project</h2>
+    <label>
+      Tên project:
+      <input type="text" id="projectName" value="Video 40s - Sản phẩm X" />
+    </label>
+    <label>
+      Số phân đoạn:
+      <input type="number" id="segmentCount" value="13" min="1" />
+    </label>
+    <label>
+      Clip / phân đoạn:
+      <input type="number" id="clipCount" value="10" min="1" />
+    </label>
+    <button id="btnCreateProject">Tạo project</button>
+  </div>
+
+  <div style="margin-top:16px;">
+    <h2>Project hiện tại</h2>
+    <div>
+      <label>
+        Project ID:
+        <input type="number" id="projectId" min="1" />
+      </label>
+      <button id="btnLoadProject">Load</button>
+      <button id="btnNewVariant">Tạo biến thể mới</button>
+    </div>
+    <div id="projectInfo" style="margin-top:8px;"></div>
+  </div>
+
+  <div id="variants">
+    <!-- danh sách biến thể -->
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3000/api";
+
+    const projectNameInput = document.getElementById("projectName");
+    const segmentCountInput = document.getElementById("segmentCount");
+    const clipCountInput = document.getElementById("clipCount");
+    const projectIdInput = document.getElementById("projectId");
+    const projectInfoDiv = document.getElementById("projectInfo");
+    const variantsDiv = document.getElementById("variants");
+
+    document.getElementById("btnCreateProject").addEventListener("click", async () => {
+      const name = projectNameInput.value.trim();
+      const segment_count = parseInt(segmentCountInput.value, 10);
+      const clips_per_segment = parseInt(clipCountInput.value, 10);
+
+      if (!name || !segment_count || !clips_per_segment) {
+        alert("Nhập đủ tên, số phân đoạn, số clip.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/projects`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, segment_count, clips_per_segment }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert("Lỗi tạo project: " + (data.error || "Unknown"));
+          return;
+        }
+        projectIdInput.value = data.id;
+        alert("Tạo project thành công. ID = " + data.id);
+        await loadProject();
+      } catch (err) {
+        console.error(err);
+        alert("Lỗi gọi API.");
+      }
+    });
+
+    document.getElementById("btnLoadProject").addEventListener("click", loadProject);
+
+    async function loadProject() {
+      const projectId = parseInt(projectIdInput.value, 10);
+      if (!projectId) {
+        alert("Nhập Project ID.");
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/projects/${projectId}`);
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || "Không load được project");
+          return;
+        }
+
+        const p = data.project;
+        projectInfoDiv.textContent =
+          `Project: ${p.name} | ID: ${p.id} | Phân đoạn: ${p.segment_count} | ` +
+          `Clip/đoạn: ${p.clips_per_segment} | Biến thể: ${data.variants.length}`;
+
+        variantsDiv.innerHTML = "<h3>Danh sách biến thể</h3>";
+        data.variants.forEach((v, idx) => {
+          const row = document.createElement("div");
+          row.className = "variant-row";
+        //   const clips = v.segments
+        //     .sort((a, b) => a.segment_index - b.segment_index)
+        //     .map(s => s.clip_index)
+        //     .join(", ");
+        //   row.textContent = `#${idx + 1} (ID ${v.id}) [${clips}]`;
+        const clips = v.segments
+  .sort((a, b) => a.segment_index - b.segment_index)
+  .map(s => {
+    // nếu backend đã trả segment_index là 1-based:
+    const segNum = s.segment_index;
+    const clipNum = s.clip_index;
+    return `${segNum}.${clipNum}`;
+  })
+  .join(", ");
+
+row.textContent = `#${idx + 1} (ID ${v.id}) [${clips}]`;
+
+          variantsDiv.appendChild(row);
+        });
+
+        if (data.variants.length === 0) {
+          const row = document.createElement("div");
+          row.textContent = "Chưa có biến thể nào.";
+          variantsDiv.appendChild(row);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Lỗi gọi API.");
+      }
+    }
+
+    document.getElementById("btnNewVariant").addEventListener("click", async () => {
+      const projectId = parseInt(projectIdInput.value, 10);
+      if (!projectId) {
+        alert("Nhập Project ID trước.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/projects/${projectId}/variants`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert("Lỗi tạo biến thể: " + (data.error || "Unknown"));
+          return;
+        }
+        // const clips = data.variant.segments
+        //   .sort((a, b) => a.segment_index - b.segment_index)
+        //   .map(s => s.clip_index)
+        //   .join(", ");
+        // alert(`Đã tạo biến thể mới: [${clips}]`);
+        const clips = data.variant.segments
+  .sort((a, b) => a.segment_index - b.segment_index)
+  .map(s => {
+    // segment_index đã là 1-based từ backend
+    const segNum = s.segment_index;
+    const clipNum = s.clip_index;
+    return `${segNum}.${clipNum}`;
+  })
+  .join(", ");
+
+alert(`Đã tạo biến thể mới: [${clips}]`);
+
+        await loadProject();
+      } catch (err) {
+        console.error(err);
+        alert("Lỗi gọi API.");
+      }
+    });
+  </script>
+</body>
+</html>
