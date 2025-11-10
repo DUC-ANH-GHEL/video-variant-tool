@@ -141,7 +141,9 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <script>
-    const API_BASE = "http://localhost:3000/api";
+    // const API_BASE = "http://localhost:3000/api";
+    const API_BASE = "/api";
+
 
     // form & project detail
     const projectNameInput = document.getElementById("projectName");
@@ -453,41 +455,7 @@
 }
 
 
-    // function renderProjectList(projects) {
-    //   projectsListEl.innerHTML = "";
-    //   if (!projects || projects.length === 0) {
-    //     const li = document.createElement("li");
-    //     li.className = "project-empty";
-    //     li.textContent = "Không có project nào.";
-    //     projectsListEl.appendChild(li);
-    //     return;
-    //   }
-
-    //   projects.forEach((p) => {
-    //     const li = document.createElement("li");
-    //     li.className = "project-row";
-    //     li.dataset.projectId = p.id;
-
-    //     const title = document.createElement("div");
-    //     title.className = "project-row-title";
-    //     title.textContent = p.name;
-    //     li.appendChild(title);
-
-    //     const meta = document.createElement("div");
-    //     meta.className = "project-row-meta";
-    //     meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${p.clips_per_segment} clip/đoạn`;
-    //     li.appendChild(meta);
-
-    //     li.addEventListener("click", () => {
-    //       selectedProjectId = p.id;
-    //       projectIdInput.value = p.id;
-    //       highlightSelectedProjectRow();
-    //       loadProject();
-    //     });
-
-    //     projectsListEl.appendChild(li);
-    //   });
-    // }
+    
 
     function renderProjectList(projects) {
   projectsListEl.innerHTML = "";
