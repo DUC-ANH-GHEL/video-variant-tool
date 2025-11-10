@@ -410,41 +410,138 @@
       }
     }
 
-    function renderProjectList(projects) {
-      projectsListEl.innerHTML = "";
-      if (!projects || projects.length === 0) {
-        const li = document.createElement("li");
-        li.className = "project-empty";
-        li.textContent = "Không có project nào.";
-        projectsListEl.appendChild(li);
-        return;
-      }
+    async function deleteProject(projectId, btnElement) {
+  if (!confirm("Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)")) {
+    return;
+  }
 
-      projects.forEach((p) => {
-        const li = document.createElement("li");
-        li.className = "project-row";
-        li.dataset.projectId = p.id;
-
-        const title = document.createElement("div");
-        title.className = "project-row-title";
-        title.textContent = p.name;
-        li.appendChild(title);
-
-        const meta = document.createElement("div");
-        meta.className = "project-row-meta";
-        meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${p.clips_per_segment} clip/đoạn`;
-        li.appendChild(meta);
-
-        li.addEventListener("click", () => {
-          selectedProjectId = p.id;
-          projectIdInput.value = p.id;
-          highlightSelectedProjectRow();
-          loadProject();
-        });
-
-        projectsListEl.appendChild(li);
-      });
+  try {
+    btnElement.disabled = true;
+    btnElement.textContent = "Đang xoá...";
+    const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+      method: "DELETE",
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || "Lỗi xoá project", "error");
+      return;
     }
+
+    showToast("Đã xoá project.", "success");
+
+    // Nếu đang xem project này thì clear thông tin & variants
+    if (selectedProjectId === projectId) {
+      selectedProjectId = null;
+      projectIdInput.value = "";
+      projectInfoDiv.textContent = "Chưa chọn project.";
+      variantsListEl.innerHTML = "";
+      const empty = document.createElement("li");
+      empty.className = "variant-empty";
+      empty.textContent = "Chưa chọn project nào.";
+      variantsListEl.appendChild(empty);
+    }
+
+    // Reload lại list project (vẫn giữ trang hiện tại)
+    await loadProjects(currentProjectPage);
+  } catch (err) {
+    console.error(err);
+    showToast("Lỗi gọi API khi xoá project.", "error");
+  } finally {
+    btnElement.disabled = false;
+    btnElement.textContent = "Xoá";
+  }
+}
+
+
+    // function renderProjectList(projects) {
+    //   projectsListEl.innerHTML = "";
+    //   if (!projects || projects.length === 0) {
+    //     const li = document.createElement("li");
+    //     li.className = "project-empty";
+    //     li.textContent = "Không có project nào.";
+    //     projectsListEl.appendChild(li);
+    //     return;
+    //   }
+
+    //   projects.forEach((p) => {
+    //     const li = document.createElement("li");
+    //     li.className = "project-row";
+    //     li.dataset.projectId = p.id;
+
+    //     const title = document.createElement("div");
+    //     title.className = "project-row-title";
+    //     title.textContent = p.name;
+    //     li.appendChild(title);
+
+    //     const meta = document.createElement("div");
+    //     meta.className = "project-row-meta";
+    //     meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${p.clips_per_segment} clip/đoạn`;
+    //     li.appendChild(meta);
+
+    //     li.addEventListener("click", () => {
+    //       selectedProjectId = p.id;
+    //       projectIdInput.value = p.id;
+    //       highlightSelectedProjectRow();
+    //       loadProject();
+    //     });
+
+    //     projectsListEl.appendChild(li);
+    //   });
+    // }
+
+    function renderProjectList(projects) {
+  projectsListEl.innerHTML = "";
+  if (!projects || projects.length === 0) {
+    const li = document.createElement("li");
+    li.className = "project-empty";
+    li.textContent = "Không có project nào.";
+    projectsListEl.appendChild(li);
+    return;
+  }
+
+  projects.forEach((p) => {
+    const li = document.createElement("li");
+    li.className = "project-row";
+    li.dataset.projectId = p.id;
+
+    // header: tên + nút xoá
+    const header = document.createElement("div");
+    header.className = "project-row-header";
+
+    const title = document.createElement("div");
+    title.className = "project-row-title";
+    title.textContent = p.name;
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn-outline small-btn project-delete-btn";
+    deleteBtn.textContent = "Xoá";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); // không trigger click chọn project
+      deleteProject(p.id, deleteBtn);
+    });
+
+    header.appendChild(title);
+    header.appendChild(deleteBtn);
+    li.appendChild(header);
+
+    // meta
+    const meta = document.createElement("div");
+    meta.className = "project-row-meta";
+    meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${p.clips_per_segment} clip/đoạn`;
+    li.appendChild(meta);
+
+    // click vào cả row để chọn project
+    li.addEventListener("click", () => {
+      selectedProjectId = p.id;
+      projectIdInput.value = p.id;
+      highlightSelectedProjectRow();
+      loadProject();
+    });
+
+    projectsListEl.appendChild(li);
+  });
+}
+
 
     function highlightSelectedProjectRow() {
       const rows = projectsListEl.querySelectorAll(".project-row");
@@ -453,6 +550,7 @@
         row.classList.toggle("active", id === selectedProjectId);
       });
     }
+    
 
     // load list project lần đầu
     loadProjects(1);

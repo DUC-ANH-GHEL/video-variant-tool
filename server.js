@@ -295,6 +295,32 @@ app.post("/api/projects/:id/variants", async (req, res) => {
   }
 });
 
+// Xoá project
+app.delete("/api/projects/:id", async (req, res) => {
+  const projectId = parseInt(req.params.id, 10);
+  if (!projectId) {
+    return res.status(400).json({ error: "projectId không hợp lệ" });
+  }
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM projects WHERE id = $1 RETURNING id",
+      [projectId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Không tìm thấy project để xoá" });
+    }
+
+    // ON DELETE CASCADE sẽ tự xoá variants, variant_segments, used_adjacent_pairs
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Lỗi server khi xoá project" });
+  }
+});
+
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log("Server chạy trên port", port);
