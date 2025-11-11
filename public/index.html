@@ -331,11 +331,18 @@ function renderVariants(variants) {
 
   // Sắp xếp lại cho chắc: ID giảm dần => mới nhất lên đầu
   const sorted = [...variants].sort((a, b) => b.id - a.id);
-  const total = sorted.length;
+  // const total = sorted.length;
 
-  sorted.forEach((v, idx) => {
-    // Video - 1 là cũ nhất, Video - N là mới nhất
-    const videoNumber = total - idx;
+  // sorted.forEach((v, idx) => {
+  //   // Video - 1 là cũ nhất, Video - N là mới nhất
+  //   const videoNumber = total - idx;
+
+  const total = sorted.length;
+const base = 10; // 👈 bắt đầu từ 10
+
+sorted.forEach((v, idx) => {
+  const videoNumber = base + (total - 1 - idx); // => Video - 10, 11, 12,...
+
 
     const li = document.createElement("li");
     li.className = "variant-row";
