@@ -123,7 +123,7 @@ app.get("/api/projects/:id", async (req, res) => {
       `SELECT v.id,
               v.name,
               v.created_at,
-              json_agg(json_build_object('segment_index', vs.segment_index + 1, 'clip_index', vs.clip_index)
+              json_agg(json_build_object('segment_index', vs.segment_index + 10, 'clip_index', vs.clip_index)
                        ORDER BY vs.segment_index) AS segments
        FROM variants v
        JOIN variant_segments vs ON vs.variant_id = v.id
