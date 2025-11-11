@@ -240,7 +240,8 @@ app.post("/api/projects/:id/variants", async (req, res) => {
     const currentCount = parseInt(countRes.rows[0].count, 10);
     // const variantName = `Video #${currentCount + 1}`;
 
-    const base = 10; // bắt đầu từ Video - 10
+    // const base = 10; // bắt đầu từ Video - 10
+    const base = M;
 const variantName = `Video - ${base + currentCount}`;
 
 
