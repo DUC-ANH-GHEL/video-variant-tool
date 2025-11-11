@@ -319,6 +319,15 @@ function renderVariants(variants) {
     }
 
     async function deleteProject(projectId, btnElement) {
+//   if (!confirm("Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)")) {
+//     return;
+//   }
+  const pass = prompt("Nhập mật khẩu để xoá project:");
+  if (pass !== "7246") {
+    showToast("Sai mật khẩu! Không thể xoá.", "error");
+    return;
+  }
+
   if (!confirm("Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)")) {
     return;
   }
