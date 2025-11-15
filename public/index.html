@@ -141,7 +141,206 @@
 
   <!-- Toast container -->
   <div id="toastContainer" class="toast-container"></div>
+  <!-- Variant modal (hidden by default) -->
+  <div id="variantModal" class="variant-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="variant-modal-backdrop" data-modal-close></div>
+    <div class="variant-modal-panel" role="document">
+      <button class="variant-modal-close" aria-label="Close" data-modal-close>&times;</button>
+      <h3 class="variant-modal-title">Chi tiết biến thể</h3>
+      <div class="variant-modal-body">
+        <div class="variant-modal-actions">
+          <button id="variantCopy" class="btn-outline small-btn">Copy</button>
+        </div>
+        <div class="variant-modal-tablewrap">
+          <table class="variant-table" id="variantModalTable" role="table">
+            <thead id="variantModalTableHead"></thead>
+            <tbody id="variantModalTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
+
+  <script>
+    (function(){
+      const modal = document.getElementById('variantModal');
+      const tablewrap = document.querySelector('.variant-modal-tablewrap');
+      const copyBtn = document.getElementById('variantCopy');
+      let currentData = null;
+
+      function escapeHtml(str){
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function renderGridFromText(text){
+        tablewrap.innerHTML = '';
+        currentData = null;
+        if(!text) return;
+
+        let allItems = [];
+
+        // try JSON first
+        try{
+          const data = JSON.parse(text);
+          if(Array.isArray(data)){
+            if(data.length === 0) return;
+            if(typeof data[0] === 'object' && data[0] !== null){
+              const cols = Array.from(data.reduce((s,row)=>{ Object.keys(row||{}).forEach(k=>s.add(k)); return s; }, new Set()));
+              data.forEach(row=>{
+                cols.forEach(c=>{ allItems.push({label:c, value:row && row[c] != null ? row[c] : ''}); });
+              });
+              currentData = allItems;
+            } else {
+              data.forEach((v,i)=>{ allItems.push({label:i+1, value:v}); });
+              currentData = allItems;
+            }
+          } else if(typeof data === 'object' && data !== null){
+            Object.keys(data).forEach(k=>{ allItems.push({label:k, value:data[k]}); });
+            currentData = allItems;
+          }
+          if(allItems.length > 0){
+            renderDualTables(allItems);
+            return;
+          }
+        }catch(e){/* not json */}
+
+        // split lines
+        const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+        if(lines.length > 1){
+          if(lines.every(l=>l.includes(':'))){
+            lines.forEach(l=>{ const idx = l.indexOf(':'); const k = l.slice(0,idx).trim(); const v = l.slice(idx+1).trim(); allItems.push({label:k, value:v}); });
+            currentData = allItems;
+            renderDualTables(allItems);
+            return;
+          } else {
+            lines.forEach((l,i)=>{ allItems.push({label:i+1, value:l}); });
+            currentData = allItems;
+            renderDualTables(allItems);
+            return;
+          }
+        }
+
+        // comma separated
+        const parts = text.split(',').map(s=>s.trim()).filter(Boolean);
+        if(parts.length > 1){
+          parts.forEach((p,i)=>{ allItems.push({label:i+1, value:p}); });
+          currentData = allItems;
+          renderDualTables(allItems);
+          return;
+        }
+
+        // fallback single cell
+        allItems.push({label:'Data', value:text});
+        currentData = allItems;
+        renderDualTables(allItems);
+      }
+
+      function renderDualTables(items){
+        const mid = Math.ceil(items.length / 2);
+        const leftItems = items.slice(0, mid);
+        const rightItems = items.slice(mid);
+
+        // Left table
+        const leftTable = document.createElement('table');
+        leftTable.className = 'variant-table';
+        const leftHead = document.createElement('thead');
+        leftHead.innerHTML = '<tr><th>#</th><th>Value</th></tr>';
+        const leftBody = document.createElement('tbody');
+        leftItems.forEach(item=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.value)}</td>`;
+          leftBody.appendChild(tr);
+        });
+        leftTable.appendChild(leftHead);
+        leftTable.appendChild(leftBody);
+        tablewrap.appendChild(leftTable);
+
+        // Right table (if has items)
+        if(rightItems.length > 0){
+          const rightTable = document.createElement('table');
+          rightTable.className = 'variant-table';
+          const rightHead = document.createElement('thead');
+          rightHead.innerHTML = '<tr><th>#</th><th>Value</th></tr>';
+          const rightBody = document.createElement('tbody');
+          rightItems.forEach(item=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.value)}</td>`;
+            rightBody.appendChild(tr);
+          });
+          rightTable.appendChild(rightHead);
+          rightTable.appendChild(rightBody);
+          tablewrap.appendChild(rightTable);
+        }
+      }
+
+      function openModal(text){
+        renderGridFromText(text || '');
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden','false');
+        document.body.style.overflow = 'hidden';
+        const closeBtn = modal.querySelector('.variant-modal-close');
+        if(closeBtn) closeBtn.focus();
+      }
+
+      function closeModal(){
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden','true');
+        document.body.style.overflow = '';
+      }
+
+      // Delegated click handler for variant elements.
+      document.addEventListener('click', function(e){
+        // close triggers
+        if(e.target.closest('[data-modal-close]')){ closeModal(); return; }
+
+        const el = e.target.closest('.variant-row, .variant-card, [data-variant], .variant-item');
+        if(!el) return;
+
+        // Try dataset first
+        let text = el.getAttribute('data-variant') || el.dataset.variant;
+
+        // If not provided, collect any nested .variant-code nodes
+        if(!text){
+          const codes = el.querySelectorAll('.variant-code');
+          if(codes && codes.length){
+            text = Array.from(codes).map(n=>n.textContent.trim()).join('\n');
+          } else {
+            // fallback to element's full text
+            text = el.textContent.trim();
+          }
+        }
+
+        if(text) openModal(text);
+      });
+
+      // close on ESC
+      document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeModal(); });
+
+      // copy table content as plain text
+      if(copyBtn){
+        copyBtn.addEventListener('click', function(){
+          try{
+            let rows = [];
+            document.querySelectorAll('.variant-table tbody tr').forEach(tr=>{
+              const cells = Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim());
+              rows.push(cells.join('\t'));
+            });
+            const text = rows.join('\n');
+            navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : (function(){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); })();
+            // small toast
+            const toast = document.createElement('div'); toast.className='toast toast--success'; toast.textContent='Copied'; document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(()=>{ toast.classList.add('toast--hide'); setTimeout(()=>toast.remove(),200); },900);
+          }catch(err){ console.error(err); }
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
