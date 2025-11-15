@@ -227,8 +227,47 @@
           }
         }
 
-        // comma separated
-        const parts = text.split(',').map(s=>s.trim()).filter(Boolean);
+        // comma separated but ignore commas inside (), [] or {}
+        function splitTopLevelCommas(str){
+          const out = [];
+          let buf = '';
+          let depthParen = 0, depthBracket = 0, depthBrace = 0;
+          let inQuote = null;
+          for(let i=0;i<str.length;i++){
+            const ch = str[i];
+            if(inQuote){
+              buf += ch;
+              if(ch === inQuote && str[i-1] !== '\\') inQuote = null;
+              continue;
+            }
+            if(ch === '"' || ch === "'"){
+              inQuote = ch; buf += ch; continue;
+            }
+            if(ch === '(') { depthParen++; buf += ch; continue; }
+            if(ch === ')') { depthParen = Math.max(0, depthParen-1); buf += ch; continue; }
+            if(ch === '[') { depthBracket++; buf += ch; continue; }
+            if(ch === ']') { depthBracket = Math.max(0, depthBracket-1); buf += ch; continue; }
+            if(ch === '{') { depthBrace++; buf += ch; continue; }
+            if(ch === '}') { depthBrace = Math.max(0, depthBrace-1); buf += ch; continue; }
+
+            if(ch === ',' && depthParen === 0 && depthBracket === 0 && depthBrace === 0){
+              if(buf.trim()) out.push(buf.trim());
+              buf = '';
+            } else {
+              buf += ch;
+            }
+          }
+          if(buf.trim()) out.push(buf.trim());
+          return out;
+        }
+
+        // If the whole string is wrapped in [...] remove outer brackets first
+        let inner = text.trim();
+        if(inner.startsWith('[') && inner.endsWith(']')){
+          inner = inner.slice(1, -1).trim();
+        }
+
+        const parts = splitTopLevelCommas(inner).map(s=>s.replace(/^\[|\]$/g,'').trim()).filter(Boolean);
         if(parts.length > 1){
           parts.forEach((p,i)=>{ allItems.push({label:i+1, value:p}); });
           currentData = allItems;

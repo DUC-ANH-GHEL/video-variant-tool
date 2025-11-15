@@ -32,382 +32,382 @@ let selectedProjectId = null;
 
 // ---------- Helpers ----------
 function showToast(message, type = "info") {
-  const container = document.getElementById("toastContainer");
-  const toast = document.createElement("div");
-  toast.className = `toast toast--${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = `toast toast--${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
 
-  setTimeout(() => {
-    toast.classList.add("toast--hide");
     setTimeout(() => {
-      toast.remove();
-    }, 200);
-  }, 2600);
+        toast.classList.add("toast--hide");
+        setTimeout(() => {
+            toast.remove();
+        }, 200);
+    }, 2600);
 }
 
 function setButtonLoading(button, isLoading, loadingText) {
-  if (!button) return;
-  if (isLoading) {
-    if (!button.dataset.originalText) {
-      button.dataset.originalText = button.innerHTML;
+    if (!button) return;
+    if (isLoading) {
+        if (!button.dataset.originalText) {
+            button.dataset.originalText = button.innerHTML;
+        }
+        button.classList.add("btn-loading");
+        if (loadingText) {
+            button.innerHTML = loadingText;
+        }
+        button.disabled = true;
+    } else {
+        button.classList.remove("btn-loading");
+        if (button.dataset.originalText) {
+            button.innerHTML = button.dataset.originalText;
+            delete button.dataset.originalText;
+        }
+        button.disabled = false;
     }
-    button.classList.add("btn-loading");
-    if (loadingText) {
-      button.innerHTML = loadingText;
-    }
-    button.disabled = true;
-  } else {
-    button.classList.remove("btn-loading");
-    if (button.dataset.originalText) {
-      button.innerHTML = button.dataset.originalText;
-      delete button.dataset.originalText;
-    }
-    button.disabled = false;
-  }
 }
 
 // ---------- CREATE PROJECT ----------
-btnCreateProject.addEventListener("click", async () => {
-  const name = projectNameInput.value.trim();
-  const segment_count = parseInt(segmentCountInput.value, 10);
-  const clips_per_segment = parseInt(clipCountInput.value, 10);
+btnCreateProject.addEventListener("click", async() => {
+    const name = projectNameInput.value.trim();
+    const segment_count = parseInt(segmentCountInput.value, 10);
+    const clips_per_segment = parseInt(clipCountInput.value, 10);
 
-  if (!name || !segment_count || !clips_per_segment) {
-    showToast("Nhập đủ tên, số phân đoạn, số clip.", "error");
-    return;
-  }
-
-  try {
-    setButtonLoading(btnCreateProject, true, "Đang tạo...");
-    const res = await fetch(`${API_BASE}/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, segment_count, clips_per_segment }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      showToast("Lỗi tạo project: " + (data.error || "Unknown"), "error");
-      return;
+    if (!name || !segment_count || !clips_per_segment) {
+        showToast("Nhập đủ tên, số phân đoạn, số clip.", "error");
+        return;
     }
-    projectIdInput.value = data.id;
-    selectedProjectId = data.id;
-    showToast("Tạo project thành công. ID = " + data.id, "success");
-    await loadProjects(currentProjectPage);
-    await loadProject();
-  } catch (err) {
-    console.error(err);
-    showToast("Lỗi gọi API khi tạo project.", "error");
-  } finally {
-    setButtonLoading(btnCreateProject, false);
-  }
+
+    try {
+        setButtonLoading(btnCreateProject, true, "Đang tạo...");
+        const res = await fetch(`${API_BASE}/projects`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, segment_count, clips_per_segment }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showToast("Lỗi tạo project: " + (data.error || "Unknown"), "error");
+            return;
+        }
+        projectIdInput.value = data.id;
+        selectedProjectId = data.id;
+        showToast("Tạo project thành công. ID = " + data.id, "success");
+        await loadProjects(currentProjectPage);
+        await loadProject();
+    } catch (err) {
+        console.error(err);
+        showToast("Lỗi gọi API khi tạo project.", "error");
+    } finally {
+        setButtonLoading(btnCreateProject, false);
+    }
 });
 
 // ---------- LOAD 1 PROJECT & VARIANTS ----------
 btnLoadProject.addEventListener("click", loadProject);
 
 async function loadProject() {
-  const projectId = parseInt(projectIdInput.value || selectedProjectId, 10);
-  if (!projectId) {
-    showToast("Nhập hoặc chọn Project ID trước.", "error");
-    return;
-  }
-  try {
-    setButtonLoading(btnLoadProject, true, "Đang load...");
-    const res = await fetch(`${API_BASE}/projects/${projectId}`);
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error || "Không load được project", "error");
-      return;
+    const projectId = parseInt(projectIdInput.value || selectedProjectId, 10);
+    if (!projectId) {
+        showToast("Nhập hoặc chọn Project ID trước.", "error");
+        return;
     }
+    try {
+        setButtonLoading(btnLoadProject, true, "Đang load...");
+        const res = await fetch(`${API_BASE}/projects/${projectId}`);
+        const data = await res.json();
+        if (!res.ok) {
+            showToast(data.error || "Không load được project", "error");
+            return;
+        }
 
-    const p = data.project;
-    selectedProjectId = p.id;
-    projectIdInput.value = p.id;
+        const p = data.project;
+        selectedProjectId = p.id;
+        projectIdInput.value = p.id;
 
-    projectInfoDiv.textContent =
-      `Project: ${p.name} | ID: ${p.id} | Phân đoạn: ${p.segment_count} | ` +
-      `Clip/đoạn: ${p.clips_per_segment} | Biến thể: ${data.variants.length}`;
+        projectInfoDiv.textContent =
+            `Project: ${p.name} | ID: ${p.id} | Phân đoạn: ${p.segment_count} | ` +
+            `Clip/đoạn: ${p.clips_per_segment} | Biến thể: ${data.variants.length}`;
 
-    highlightSelectedProjectRow();
-    renderVariants(data.variants);
-    showToast("Load project thành công.", "success");
-  } catch (err) {
-    console.error(err);
-    showToast("Lỗi gọi API khi load project.", "error");
-  } finally {
-    setButtonLoading(btnLoadProject, false);
-  }
+        highlightSelectedProjectRow();
+        renderVariants(data.variants);
+        showToast("Load project thành công.", "success");
+    } catch (err) {
+        console.error(err);
+        showToast("Lỗi gọi API khi load project.", "error");
+    } finally {
+        setButtonLoading(btnLoadProject, false);
+    }
 }
 
 // ---------- VARIANTS RENDER ----------
 function renderVariants(variants) {
-  variantsListEl.innerHTML = "";
-  if (!variants || variants.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "variant-empty";
-    empty.textContent = "Chưa có biến thể nào.";
-    variantsListEl.appendChild(empty);
-    return;
-  }
+    variantsListEl.innerHTML = "";
+    if (!variants || variants.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "variant-empty";
+        empty.textContent = "Chưa có biến thể nào.";
+        variantsListEl.appendChild(empty);
+        return;
+    }
 
-  // Sắp xếp lại cho chắc: ID giảm dần => mới nhất lên đầu
-  const sorted = [...variants].sort((a, b) => b.id - a.id);
-  const total = sorted.length;
+    // Sắp xếp lại cho chắc: ID giảm dần => mới nhất lên đầu
+    const sorted = [...variants].sort((a, b) => b.id - a.id);
+    const total = sorted.length;
 
-  sorted.forEach((v, idx) => {
-    // Video - 1 là cũ nhất, Video - N là mới nhất
-    const videoNumber = total - idx;
+    sorted.forEach((v, idx) => {
+        // Video - 1 là cũ nhất, Video - N là mới nhất
+        const videoNumber = total - idx;
 
-    const li = document.createElement("li");
-    li.className = "variant-row";
+        const li = document.createElement("li");
+        li.className = "variant-row";
 
-    const meta = document.createElement("div");
-    meta.className = "variant-meta";
-    meta.innerHTML = `<strong>${v.name}</strong><span>ID ${v.id}</span>`;
-    li.appendChild(meta);
+        const meta = document.createElement("div");
+        meta.className = "variant-meta";
+        meta.innerHTML = `<strong>${v.name}</strong><span>ID ${v.id}</span>`;
+        li.appendChild(meta);
 
-    const codes = v.segments
-      .sort((a, b) => a.segment_index - b.segment_index)
-      .map((s) => {
-        const base = `${s.segment_index}.${s.clip_index}`;
-        const label = formatEditLabel(s);
-        return label ? `${base} (${label})` : base;
-      })
-      .join(", ");
+        const codes = v.segments
+            .sort((a, b) => a.segment_index - b.segment_index)
+            .map((s) => {
+                const base = `${s.segment_index}.${s.clip_index}`;
+                const label = formatEditLabel(s);
+                return label ? `${base} (${label})` : base;
+            })
+            .join(", ");
 
 
-    const codeEl = document.createElement("div");
-    codeEl.className = "variant-code";
-    codeEl.textContent = `[${codes}]`;
-    li.appendChild(codeEl);
+        const codeEl = document.createElement("div");
+        codeEl.className = "variant-code";
+        codeEl.textContent = `[${codes}]`;
+        li.appendChild(codeEl);
 
-    variantsListEl.appendChild(li);
-  });
+        variantsListEl.appendChild(li);
+    });
 }
 
 
 // ---------- TẠO BIẾN THỂ MỚI ----------
-btnNewVariant.addEventListener("click", async () => {
-  const projectId = parseInt(projectIdInput.value || selectedProjectId, 10);
-  if (!projectId) {
-    showToast("Chọn hoặc nhập Project ID trước.", "error");
-    return;
-  }
-
-  try {
-    setButtonLoading(btnNewVariant, true, "Đang tạo...");
-    const res = await fetch(`${API_BASE}/projects/${projectId}/variants`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      showToast("Lỗi tạo biến thể: " + (data.error || "Unknown"), "error");
-      return;
+btnNewVariant.addEventListener("click", async() => {
+    const projectId = parseInt(projectIdInput.value || selectedProjectId, 10);
+    if (!projectId) {
+        showToast("Chọn hoặc nhập Project ID trước.", "error");
+        return;
     }
 
-    const clips = data.variant.segments
-      .sort((a, b) => a.segment_index - b.segment_index)
-      .map((s) => `${s.segment_index}.${s.clip_index}`)
-      .join(", ");
+    try {
+        setButtonLoading(btnNewVariant, true, "Đang tạo...");
+        const res = await fetch(`${API_BASE}/projects/${projectId}/variants`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showToast("Lỗi tạo biến thể: " + (data.error || "Unknown"), "error");
+            return;
+        }
 
-    showToast(`Tạo biến thể mới: [${clips}]`, "success");
-    await loadProject();
-  } catch (err) {
-    console.error(err);
-    showToast("Lỗi gọi API khi tạo biến thể.", "error");
-  } finally {
-    setButtonLoading(btnNewVariant, false);
-  }
+        const clips = data.variant.segments
+            .sort((a, b) => a.segment_index - b.segment_index)
+            .map((s) => `${s.segment_index}.${s.clip_index}`)
+            .join(", ");
+
+        showToast(`Tạo biến thể mới: [${clips}]`, "success");
+        await loadProject();
+    } catch (err) {
+        console.error(err);
+        showToast("Lỗi gọi API khi tạo biến thể.", "error");
+    } finally {
+        setButtonLoading(btnNewVariant, false);
+    }
 });
 
 // ---------- PROJECT LIST + SEARCH + PAGINATION ----------
 btnProjectSearch.addEventListener("click", () => {
-  currentProjectPage = 1;
-  currentProjectSearch = projectSearchInput.value.trim();
-  loadProjects(currentProjectPage);
-});
-
-projectSearchInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
     currentProjectPage = 1;
     currentProjectSearch = projectSearchInput.value.trim();
     loadProjects(currentProjectPage);
-  }
+});
+
+projectSearchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        currentProjectPage = 1;
+        currentProjectSearch = projectSearchInput.value.trim();
+        loadProjects(currentProjectPage);
+    }
 });
 
 btnProjectPrev.addEventListener("click", () => {
-  if (currentProjectPage > 1) {
-    loadProjects(currentProjectPage - 1);
-  }
+    if (currentProjectPage > 1) {
+        loadProjects(currentProjectPage - 1);
+    }
 });
 
 btnProjectNext.addEventListener("click", () => {
-  if (currentProjectPage < totalProjectPages) {
-    loadProjects(currentProjectPage + 1);
-  }
+    if (currentProjectPage < totalProjectPages) {
+        loadProjects(currentProjectPage + 1);
+    }
 });
 
 async function loadProjects(page = 1) {
-  const search = projectSearchInput.value.trim();
-  const limit = 8;
-  try {
-    setButtonLoading(btnProjectSearch, true, "Đang tìm...");
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      search,
-    });
-    const res = await fetch(`${API_BASE}/projects?` + params.toString());
-    const data = await res.json();
-    if (!res.ok) {
-      console.error(data);
-      showToast(data.error || "Không load được danh sách project", "error");
-      return;
+    const search = projectSearchInput.value.trim();
+    const limit = 8;
+    try {
+        setButtonLoading(btnProjectSearch, true, "Đang tìm...");
+        const params = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+            search,
+        });
+        const res = await fetch(`${API_BASE}/projects?` + params.toString());
+        const data = await res.json();
+        if (!res.ok) {
+            console.error(data);
+            showToast(data.error || "Không load được danh sách project", "error");
+            return;
+        }
+
+        currentProjectPage = data.pagination.page;
+        totalProjectPages = data.pagination.totalPages || 1;
+        projectPageInfo.textContent =
+            `Trang ${currentProjectPage}/${totalProjectPages}`;
+
+        renderProjectList(data.projects);
+        highlightSelectedProjectRow();
+    } catch (err) {
+        console.error(err);
+        showToast("Lỗi gọi API danh sách project.", "error");
+    } finally {
+        setButtonLoading(btnProjectSearch, false);
     }
-
-    currentProjectPage = data.pagination.page;
-    totalProjectPages = data.pagination.totalPages || 1;
-    projectPageInfo.textContent =
-      `Trang ${currentProjectPage}/${totalProjectPages}`;
-
-    renderProjectList(data.projects);
-    highlightSelectedProjectRow();
-  } catch (err) {
-    console.error(err);
-    showToast("Lỗi gọi API danh sách project.", "error");
-  } finally {
-    setButtonLoading(btnProjectSearch, false);
-  }
 }
 
 async function deleteProject(projectId, btnElement) {
-  //   if (!confirm("Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)")) {
-  //     return;
-  //   }
-  const pass = prompt("Nhập mật khẩu để xoá project:");
-  if (pass !== "7246") {
-    showToast("Sai mật khẩu! Không thể xoá.", "error");
-    return;
-  }
-
-  if (!confirm("Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)")) {
-    return;
-  }
-
-  try {
-    btnElement.disabled = true;
-    btnElement.textContent = "Đang xoá...";
-    const res = await fetch(`${API_BASE}/projects/${projectId}`, {
-      method: "DELETE",
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error || "Lỗi xoá project", "error");
-      return;
+    //   if (!confirm("Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)")) {
+    //     return;
+    //   }
+    const pass = prompt("Nhập mật khẩu để xoá project:");
+    if (pass !== "7246") {
+        showToast("Sai mật khẩu! Không thể xoá.", "error");
+        return;
     }
 
-    showToast("Đã xoá project.", "success");
-
-    // Nếu đang xem project này thì clear thông tin & variants
-    if (selectedProjectId === projectId) {
-      selectedProjectId = null;
-      projectIdInput.value = "";
-      projectInfoDiv.textContent = "Chưa chọn project.";
-      variantsListEl.innerHTML = "";
-      const empty = document.createElement("li");
-      empty.className = "variant-empty";
-      empty.textContent = "Chưa chọn project nào.";
-      variantsListEl.appendChild(empty);
+    if (!confirm("Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)")) {
+        return;
     }
 
-    // Reload lại list project (vẫn giữ trang hiện tại)
-    await loadProjects(currentProjectPage);
-  } catch (err) {
-    console.error(err);
-    showToast("Lỗi gọi API khi xoá project.", "error");
-  } finally {
-    btnElement.disabled = false;
-    btnElement.textContent = "Xoá";
-  }
+    try {
+        btnElement.disabled = true;
+        btnElement.textContent = "Đang xoá...";
+        const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+            method: "DELETE",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showToast(data.error || "Lỗi xoá project", "error");
+            return;
+        }
+
+        showToast("Đã xoá project.", "success");
+
+        // Nếu đang xem project này thì clear thông tin & variants
+        if (selectedProjectId === projectId) {
+            selectedProjectId = null;
+            projectIdInput.value = "";
+            projectInfoDiv.textContent = "Chưa chọn project.";
+            variantsListEl.innerHTML = "";
+            const empty = document.createElement("li");
+            empty.className = "variant-empty";
+            empty.textContent = "Chưa chọn project nào.";
+            variantsListEl.appendChild(empty);
+        }
+
+        // Reload lại list project (vẫn giữ trang hiện tại)
+        await loadProjects(currentProjectPage);
+    } catch (err) {
+        console.error(err);
+        showToast("Lỗi gọi API khi xoá project.", "error");
+    } finally {
+        btnElement.disabled = false;
+        btnElement.textContent = "Xoá";
+    }
 }
 
 
 
 
 function renderProjectList(projects) {
-  projectsListEl.innerHTML = "";
-  if (!projects || projects.length === 0) {
-    const li = document.createElement("li");
-    li.className = "project-empty";
-    li.textContent = "Không có project nào.";
-    projectsListEl.appendChild(li);
-    return;
-  }
+    projectsListEl.innerHTML = "";
+    if (!projects || projects.length === 0) {
+        const li = document.createElement("li");
+        li.className = "project-empty";
+        li.textContent = "Không có project nào.";
+        projectsListEl.appendChild(li);
+        return;
+    }
 
-  projects.forEach((p) => {
-    const li = document.createElement("li");
-    li.className = "project-row";
-    li.dataset.projectId = p.id;
+    projects.forEach((p) => {
+        const li = document.createElement("li");
+        li.className = "project-row";
+        li.dataset.projectId = p.id;
 
-    // header: tên + nút xoá
-    const header = document.createElement("div");
-    header.className = "project-row-header";
+        // header: tên + nút xoá
+        const header = document.createElement("div");
+        header.className = "project-row-header";
 
-    const title = document.createElement("div");
-    title.className = "project-row-title";
-    title.textContent = p.name;
+        const title = document.createElement("div");
+        title.className = "project-row-title";
+        title.textContent = p.name;
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "btn-outline small-btn project-delete-btn";
-    deleteBtn.textContent = "Xoá";
-    deleteBtn.addEventListener("click", (e) => {
-      e.stopPropagation(); // không trigger click chọn project
-      deleteProject(p.id, deleteBtn);
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "btn-outline small-btn project-delete-btn";
+        deleteBtn.textContent = "Xoá";
+        deleteBtn.addEventListener("click", (e) => {
+            e.stopPropagation(); // không trigger click chọn project
+            deleteProject(p.id, deleteBtn);
+        });
+
+        header.appendChild(title);
+        header.appendChild(deleteBtn);
+        li.appendChild(header);
+
+        // meta
+        const meta = document.createElement("div");
+        meta.className = "project-row-meta";
+        meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${p.clips_per_segment} clip/đoạn`;
+        li.appendChild(meta);
+
+        // click vào cả row để chọn project
+        li.addEventListener("click", () => {
+            selectedProjectId = p.id;
+            projectIdInput.value = p.id;
+            highlightSelectedProjectRow();
+            loadProject();
+        });
+
+        projectsListEl.appendChild(li);
     });
-
-    header.appendChild(title);
-    header.appendChild(deleteBtn);
-    li.appendChild(header);
-
-    // meta
-    const meta = document.createElement("div");
-    meta.className = "project-row-meta";
-    meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${p.clips_per_segment} clip/đoạn`;
-    li.appendChild(meta);
-
-    // click vào cả row để chọn project
-    li.addEventListener("click", () => {
-      selectedProjectId = p.id;
-      projectIdInput.value = p.id;
-      highlightSelectedProjectRow();
-      loadProject();
-    });
-
-    projectsListEl.appendChild(li);
-  });
 }
 
 
 function highlightSelectedProjectRow() {
-  const rows = projectsListEl.querySelectorAll(".project-row");
-  rows.forEach((row) => {
-    const id = parseInt(row.dataset.projectId, 10);
-    row.classList.toggle("active", id === selectedProjectId);
-  });
+    const rows = projectsListEl.querySelectorAll(".project-row");
+    rows.forEach((row) => {
+        const id = parseInt(row.dataset.projectId, 10);
+        row.classList.toggle("active", id === selectedProjectId);
+    });
 }
 
 function formatEditLabel(seg) {
-  if (seg.edit_type === 'zoom_fixed') return 'phóng to';
-  if (seg.edit_type === 'keyframe') {
-    const parts = [];
-    if (seg.kf_scale >= 2) parts.push(`tỉ lệ×${seg.kf_scale}`);
-    if (seg.kf_position >= 2) parts.push(`vị trí×${seg.kf_position}`);
-    if (seg.kf_rotate >= 2) parts.push(`xoay×${seg.kf_rotate}`);
-    return parts.length ? parts.join(', ') : 'keyframe';
-  }
-  return '';
+    if (seg.edit_type === 'zoom_fixed') return 'phóng to';
+    if (seg.edit_type === 'keyframe') {
+        const parts = [];
+        if (seg.kf_scale >= 2) parts.push(`tỉ lệ×${seg.kf_scale}`);
+        if (seg.kf_position >= 2) parts.push(`vị trí×${seg.kf_position}`);
+        if (seg.kf_rotate >= 2) parts.push(`xoay×${seg.kf_rotate}`);
+        return parts.length ? parts.join(', ') : 'keyframe';
+    }
+    return '';
 }
 
 
