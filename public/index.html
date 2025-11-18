@@ -1,385 +1,543 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-  <meta charset="UTF-8" />
-  <title>Video Variant Tool</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="style.css" />
-  <link rel="icon" type="image/png" href="favicon.png" />
+    <meta charset="UTF-8" />
+    <title>Video Variant Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
 </head>
+
 <body>
-  <div class="app">
-    <header class="app-header">
-      <div>
-        <div class="title">
-          Video Variant Tool
-          <span class="title-pill">No-duplicate Adjacent Clips</span>
-        </div>
-        <div class="subtitle">
-          Tạo biến thể video theo logic clip 1.1, 1.2, 2.1… mà không trùng cặp phân đoạn liền kề.
-        </div>
-      </div>
-      <div class="pill">
-        <span class="pill-dot"></span>
-        Neon + Node + JS only
-      </div>
-    </header>
+    <div class="app">
+        <header class="app-header">
+            <div>
+                <div class="title">
+                    Video Variant Tool
+                    <span class="title-pill">No-duplicate Adjacent Clips</span>
+                </div>
+                <div class="subtitle">
+                    Tạo biến thể video theo logic clip 1.1, 1.2, 2.1… mà không trùng cặp phân đoạn liền kề.
+                </div>
+            </div>
+            <div class="pill">
+                <span class="pill-dot"></span> Neon + Node + JS only
+            </div>
+        </header>
 
-    <div class="layout">
-      <!-- LEFT: cấu hình & tạo project -->
-      <div>
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Tạo project</div>
-          </div>
-          <p class="card-description">
-            Mỗi project tương ứng với một video gốc (ví dụ 40s, 13 phân đoạn, 10 clip/đoạn).
-          </p>
+        <div class="layout">
+            <!-- LEFT: cấu hình & tạo project -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Tạo project</div>
+                    </div>
+                    <p class="card-description">
+                        Mỗi project tương ứng với một video gốc (ví dụ 40s, 13 phân đoạn, 10 clip/đoạn).
+                    </p>
 
-          <div class="form-row">
-            <div class="field">
-              <label>
+                    <div class="form-row">
+                        <div class="field">
+                            <label>
                 Tên project <span>*</span>
               </label>
-              <input type="text" id="projectName" value="Video 40s - Sản phẩm X" />
-            </div>
-          </div>
+                            <input type="text" id="projectName" value="Video 40s - Sản phẩm X" />
+                        </div>
+                    </div>
 
-          <div class="form-row">
-            <div class="field">
-              <label>Số phân đoạn <span>*</span></label>
-              <input type="number" id="segmentCount" value="13" min="1" />
-            </div>
-            <div class="field">
-              <label>Clip / phân đoạn <span>*</span></label>
-              <input type="number" id="clipCount" value="5" min="1" />
-            </div>
-          </div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label>Số phân đoạn <span>*</span></label>
+                            <input type="number" id="segmentCount" value="13" min="1" />
+                        </div>
+                        <div class="field">
+                            <label>Clip / phân đoạn <span>*</span></label>
+                            <input type="number" id="clipCount" value="5" min="1" />
+                        </div>
+                    </div>
 
-          <div class="btn-row">
-            <button id="btnCreateProject" class="btn-primary">
+                    <div class="btn-row">
+                        <button id="btnCreateProject" class="btn-primary">
               + Tạo project
             </button>
-          </div>
-        </div>
+                    </div>
+                </div>
 
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Chọn project & tạo biến thể</div>
-          </div>
-          <p class="card-description">
-            Có thể chọn project ở danh sách bên phải, hoặc nhập ID vào đây rồi load.
-          </p>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Chọn project & tạo biến thể</div>
+                    </div>
+                    <p class="card-description">
+                        Có thể chọn project ở danh sách bên phải, hoặc nhập ID vào đây rồi load.
+                    </p>
 
-          <div class="form-row">
-            <div class="field">
-              <label>Project ID</label>
-              <input type="number" id="projectId" min="1" />
+                    <div class="form-row">
+                        <div class="field">
+                            <label>Project ID</label>
+                            <input type="number" id="projectId" min="1" />
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button id="btnLoadProject" class="btn-outline">🔄 Load project</button>
+                        <button id="btnNewVariant" class="btn-primary">✨ Tạo biến thể mới</button>
+                    </div>
+
+                    <div id="projectInfo" class="project-info-placeholder"></div>
+                </div>
             </div>
-          </div>
 
-          <div class="btn-row">
-            <button id="btnLoadProject" class="btn-outline">🔄 Load project</button>
-            <button id="btnNewVariant" class="btn-primary">✨ Tạo biến thể mới</button>
-          </div>
+            <!-- RIGHT: danh sách project + biến thể -->
+            <div class="cards-column">
+                <!-- Project list -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Danh sách project</div>
+                    </div>
+                    <p class="card-description">
+                        Tìm theo tên hoặc ID. Click vào một project để xem các biến thể bên dưới.
+                    </p>
 
-          <div id="projectInfo" class="project-info-placeholder"></div>
-        </div>
-      </div>
+                    <div class="project-search-row">
+                        <input type="text" id="projectSearch" placeholder="Search theo tên hoặc ID…" class="project-search-input" />
+                        <button id="btnProjectSearch" class="btn-outline small-btn">Tìm</button>
+                    </div>
 
-      <!-- RIGHT: danh sách project + biến thể -->
-      <div class="cards-column">
-        <!-- Project list -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Danh sách project</div>
-          </div>
-          <p class="card-description">
-            Tìm theo tên hoặc ID. Click vào một project để xem các biến thể bên dưới.
-          </p>
+                    <ul id="projectsList" class="projects-list">
+                        <li class="project-empty">Đang tải...</li>
+                    </ul>
 
-          <div class="project-search-row">
-            <input
-              type="text"
-              id="projectSearch"
-              placeholder="Search theo tên hoặc ID…"
-              class="project-search-input"
-            />
-            <button id="btnProjectSearch" class="btn-outline small-btn">Tìm</button>
-          </div>
+                    <div class="project-pagination">
+                        <button id="btnProjectPrev" class="btn-outline small-btn">&lt; Trước</button>
+                        <span id="projectPageInfo" class="page-info">Trang 1/1</span>
+                        <button id="btnProjectNext" class="btn-outline small-btn">Sau &gt;</button>
+                    </div>
+                </div>
 
-          <ul id="projectsList" class="projects-list">
-            <li class="project-empty">Đang tải...</li>
-          </ul>
-
-          <div class="project-pagination">
-            <button id="btnProjectPrev" class="btn-outline small-btn">&lt; Trước</button>
-            <span id="projectPageInfo" class="page-info">Trang 1/1</span>
-            <button id="btnProjectNext" class="btn-outline small-btn">Sau &gt;</button>
-          </div>
-        </div>
-
-        <!-- Variants -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Danh sách biến thể</div>
-            <span class="muted-small">
+                <!-- Variants -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Danh sách biến thể&nbsp;
+                            <span id="currentProjectName" class="current-project-name">(Chưa chọn)</span>
+                        </div>
+                        <span class="muted-small">
               Tự động tránh trùng cặp (segment i, i+1)
             </span>
-          </div>
+                    </div>
 
-          <div id="variants">
-            <h3>Biến thể đã tạo</h3>
-            <ul class="variants-list" id="variantsList">
-              <li class="variant-empty">Chưa chọn project nào.</li>
-            </ul>
-          </div>
+                    <div id="variants">
+                        <h3>Biến thể đã tạo</h3>
+                        <ul class="variants-list" id="variantsList">
+                            <li class="variant-empty">Chưa chọn project nào.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 
-  <!-- Toast container -->
-  <div id="toastContainer" class="toast-container"></div>
-  <!-- Variant modal (hidden by default) -->
-  <div id="variantModal" class="variant-modal" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="variant-modal-backdrop" data-modal-close></div>
-    <div class="variant-modal-panel" role="document">
-      <button class="variant-modal-close" aria-label="Close" data-modal-close>&times;</button>
-      <h3 class="variant-modal-title">Chi tiết biến thể</h3>
-      <div class="variant-modal-body">
-        <div class="variant-modal-actions">
-          <button id="variantCopy" class="btn-outline small-btn">Copy</button>
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+    <!-- Variant modal (hidden by default) -->
+    <div id="variantModal" class="variant-modal" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="variant-modal-backdrop" data-modal-close></div>
+        <div class="variant-modal-panel" role="document">
+            <button class="variant-modal-close" aria-label="Close" data-modal-close>&times;</button>
+            <h3 class="variant-modal-title">Chi tiết biến thể</h3>
+            <div class="variant-modal-body">
+                <div class="variant-modal-actions">
+                    <button id="variantCopy" class="btn-outline small-btn">Copy</button>
+                </div>
+                <div class="variant-modal-tablewrap">
+                    <table class="variant-table" id="variantModalTable" role="table">
+                        <thead id="variantModalTableHead"></thead>
+                        <tbody id="variantModalTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        <div class="variant-modal-tablewrap">
-          <table class="variant-table" id="variantModalTable" role="table">
-            <thead id="variantModalTableHead"></thead>
-            <tbody id="variantModalTableBody"></tbody>
-          </table>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <script src="script.js"></script>
+    <script src="script.js"></script>
 
-  <script>
-    (function(){
-      const modal = document.getElementById('variantModal');
-      const tablewrap = document.querySelector('.variant-modal-tablewrap');
-      const copyBtn = document.getElementById('variantCopy');
-      let currentData = null;
+    <script>
+        (function() {
+            const modal = document.getElementById('variantModal');
+            const tablewrap = document.querySelector('.variant-modal-tablewrap');
+            const copyBtn = document.getElementById('variantCopy');
+            const modalTitleEl = document.querySelector('.variant-modal-title');
+            let currentData = null;
 
-      function escapeHtml(str){
-        return String(str)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;');
-      }
-
-      function renderGridFromText(text){
-        tablewrap.innerHTML = '';
-        currentData = null;
-        if(!text) return;
-
-        let allItems = [];
-
-        // try JSON first
-        try{
-          const data = JSON.parse(text);
-          if(Array.isArray(data)){
-            if(data.length === 0) return;
-            if(typeof data[0] === 'object' && data[0] !== null){
-              const cols = Array.from(data.reduce((s,row)=>{ Object.keys(row||{}).forEach(k=>s.add(k)); return s; }, new Set()));
-              data.forEach(row=>{
-                cols.forEach(c=>{ allItems.push({label:c, value:row && row[c] != null ? row[c] : ''}); });
-              });
-              currentData = allItems;
-            } else {
-              data.forEach((v,i)=>{ allItems.push({label:i+1, value:v}); });
-              currentData = allItems;
+            function escapeHtml(str) {
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
             }
-          } else if(typeof data === 'object' && data !== null){
-            Object.keys(data).forEach(k=>{ allItems.push({label:k, value:data[k]}); });
-            currentData = allItems;
-          }
-          if(allItems.length > 0){
-            renderDualTables(allItems);
-            return;
-          }
-        }catch(e){/* not json */}
 
-        // split lines
-        const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-        if(lines.length > 1){
-          if(lines.every(l=>l.includes(':'))){
-            lines.forEach(l=>{ const idx = l.indexOf(':'); const k = l.slice(0,idx).trim(); const v = l.slice(idx+1).trim(); allItems.push({label:k, value:v}); });
-            currentData = allItems;
-            renderDualTables(allItems);
-            return;
-          } else {
-            lines.forEach((l,i)=>{ allItems.push({label:i+1, value:l}); });
-            currentData = allItems;
-            renderDualTables(allItems);
-            return;
-          }
-        }
+            function renderGridFromText(text) {
+                tablewrap.innerHTML = '';
+                currentData = null;
+                if (!text) return;
 
-        // comma separated but ignore commas inside (), [] or {}
-        function splitTopLevelCommas(str){
-          const out = [];
-          let buf = '';
-          let depthParen = 0, depthBracket = 0, depthBrace = 0;
-          let inQuote = null;
-          for(let i=0;i<str.length;i++){
-            const ch = str[i];
-            if(inQuote){
-              buf += ch;
-              if(ch === inQuote && str[i-1] !== '\\') inQuote = null;
-              continue;
+                let allItems = [];
+
+                // try JSON first
+                try {
+                    const data = JSON.parse(text);
+                    if (Array.isArray(data)) {
+                        if (data.length === 0) return;
+                        if (typeof data[0] === 'object' && data[0] !== null) {
+                            const cols = Array.from(data.reduce((s, row) => {
+                                Object.keys(row || {}).forEach(k => s.add(k));
+                                return s;
+                            }, new Set()));
+                            data.forEach(row => {
+                                cols.forEach(c => {
+                                    allItems.push({
+                                        label: c,
+                                        value: row && row[c] != null ? row[c] : ''
+                                    });
+                                });
+                            });
+                            currentData = allItems;
+                        } else {
+                            data.forEach((v, i) => {
+                                allItems.push({
+                                    label: i + 1,
+                                    value: v
+                                });
+                            });
+                            currentData = allItems;
+                        }
+                    } else if (typeof data === 'object' && data !== null) {
+                        Object.keys(data).forEach(k => {
+                            allItems.push({
+                                label: k,
+                                value: data[k]
+                            });
+                        });
+                        currentData = allItems;
+                    }
+                    if (allItems.length > 0) {
+                        renderDualTables(allItems);
+                        return;
+                    }
+                } catch (e) { /* not json */ }
+
+                // split lines
+                const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                if (lines.length > 1) {
+                    if (lines.every(l => l.includes(':'))) {
+                        lines.forEach(l => {
+                            const idx = l.indexOf(':');
+                            const k = l.slice(0, idx).trim();
+                            const v = l.slice(idx + 1).trim();
+                            allItems.push({
+                                label: k,
+                                value: v
+                            });
+                        });
+                        currentData = allItems;
+                        renderDualTables(allItems);
+                        return;
+                    } else {
+                        lines.forEach((l, i) => {
+                            allItems.push({
+                                label: i + 1,
+                                value: l
+                            });
+                        });
+                        currentData = allItems;
+                        renderDualTables(allItems);
+                        return;
+                    }
+                }
+
+                // comma separated but ignore commas inside (), [] or {}
+                function splitTopLevelCommas(str) {
+                    const out = [];
+                    let buf = '';
+                    let depthParen = 0,
+                        depthBracket = 0,
+                        depthBrace = 0;
+                    let inQuote = null;
+                    for (let i = 0; i < str.length; i++) {
+                        const ch = str[i];
+                        if (inQuote) {
+                            buf += ch;
+                            if (ch === inQuote && str[i - 1] !== '\\') inQuote = null;
+                            continue;
+                        }
+                        if (ch === '"' || ch === "'") {
+                            inQuote = ch;
+                            buf += ch;
+                            continue;
+                        }
+                        if (ch === '(') {
+                            depthParen++;
+                            buf += ch;
+                            continue;
+                        }
+                        if (ch === ')') {
+                            depthParen = Math.max(0, depthParen - 1);
+                            buf += ch;
+                            continue;
+                        }
+                        if (ch === '[') {
+                            depthBracket++;
+                            buf += ch;
+                            continue;
+                        }
+                        if (ch === ']') {
+                            depthBracket = Math.max(0, depthBracket - 1);
+                            buf += ch;
+                            continue;
+                        }
+                        if (ch === '{') {
+                            depthBrace++;
+                            buf += ch;
+                            continue;
+                        }
+                        if (ch === '}') {
+                            depthBrace = Math.max(0, depthBrace - 1);
+                            buf += ch;
+                            continue;
+                        }
+
+                        if (ch === ',' && depthParen === 0 && depthBracket === 0 && depthBrace === 0) {
+                            if (buf.trim()) out.push(buf.trim());
+                            buf = '';
+                        } else {
+                            buf += ch;
+                        }
+                    }
+                    if (buf.trim()) out.push(buf.trim());
+                    return out;
+                }
+
+                // If the whole string is wrapped in [...] remove outer brackets first
+                let inner = text.trim();
+                if (inner.startsWith('[') && inner.endsWith(']')) {
+                    inner = inner.slice(1, -1).trim();
+                }
+
+                const parts = splitTopLevelCommas(inner).map(s => s.replace(/^\[|\]$/g, '').trim()).filter(Boolean);
+                if (parts.length > 1) {
+                    parts.forEach((p, i) => {
+                        allItems.push({
+                            label: i + 1,
+                            value: p
+                        });
+                    });
+                    currentData = allItems;
+                    renderDualTables(allItems);
+                    return;
+                }
+
+                // fallback single cell
+                allItems.push({
+                    label: 'Data',
+                    value: text
+                });
+                currentData = allItems;
+                renderDualTables(allItems);
             }
-            if(ch === '"' || ch === "'"){
-              inQuote = ch; buf += ch; continue;
+
+            function renderDualTables(items) {
+                const mid = Math.ceil(items.length / 2);
+                const leftItems = items.slice(0, mid);
+                const rightItems = items.slice(mid);
+
+                // Left table
+                const leftTable = document.createElement('table');
+                leftTable.className = 'variant-table';
+                const leftHead = document.createElement('thead');
+                leftHead.innerHTML = '<tr><th>#</th><th>Value</th></tr>';
+                const leftBody = document.createElement('tbody');
+                leftItems.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.value)}</td>`;
+                    leftBody.appendChild(tr);
+                });
+                leftTable.appendChild(leftHead);
+                leftTable.appendChild(leftBody);
+                tablewrap.appendChild(leftTable);
+
+                // Right table (if has items)
+                if (rightItems.length > 0) {
+                    const rightTable = document.createElement('table');
+                    rightTable.className = 'variant-table';
+                    const rightHead = document.createElement('thead');
+                    rightHead.innerHTML = '<tr><th>#</th><th>Value</th></tr>';
+                    const rightBody = document.createElement('tbody');
+                    rightItems.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.value)}</td>`;
+                        rightBody.appendChild(tr);
+                    });
+                    rightTable.appendChild(rightHead);
+                    rightTable.appendChild(rightBody);
+                    tablewrap.appendChild(rightTable);
+                }
             }
-            if(ch === '(') { depthParen++; buf += ch; continue; }
-            if(ch === ')') { depthParen = Math.max(0, depthParen-1); buf += ch; continue; }
-            if(ch === '[') { depthBracket++; buf += ch; continue; }
-            if(ch === ']') { depthBracket = Math.max(0, depthBracket-1); buf += ch; continue; }
-            if(ch === '{') { depthBrace++; buf += ch; continue; }
-            if(ch === '}') { depthBrace = Math.max(0, depthBrace-1); buf += ch; continue; }
 
-            if(ch === ',' && depthParen === 0 && depthBracket === 0 && depthBrace === 0){
-              if(buf.trim()) out.push(buf.trim());
-              buf = '';
-            } else {
-              buf += ch;
+            function openModal(text, variantName) {
+                renderGridFromText(text || '');
+                // set modal title: Chi tiết biến thể - project name - variantName
+                try {
+                    const proj = (typeof getSelectedProjectName === 'function') ? getSelectedProjectName() : null;
+                    const projText = proj || (projectNameInputEl && projectNameInputEl.value ? projectNameInputEl.value.trim() : '(Chưa chọn)');
+                    if (modalTitleEl) {
+                        modalTitleEl.textContent = `Chi tiết biến thể - ${projText} - ${variantName || 'variant'}`;
+                    }
+                } catch (e) { /* ignore */ }
+                modal.classList.add('open');
+                modal.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+                const closeBtn = modal.querySelector('.variant-modal-close');
+                if (closeBtn) closeBtn.focus();
             }
-          }
-          if(buf.trim()) out.push(buf.trim());
-          return out;
-        }
 
-        // If the whole string is wrapped in [...] remove outer brackets first
-        let inner = text.trim();
-        if(inner.startsWith('[') && inner.endsWith(']')){
-          inner = inner.slice(1, -1).trim();
-        }
+            function closeModal() {
+                modal.classList.remove('open');
+                modal.setAttribute('aria-hidden', 'true');
+                document.body.style.overflow = '';
+            }
 
-        const parts = splitTopLevelCommas(inner).map(s=>s.replace(/^\[|\]$/g,'').trim()).filter(Boolean);
-        if(parts.length > 1){
-          parts.forEach((p,i)=>{ allItems.push({label:i+1, value:p}); });
-          currentData = allItems;
-          renderDualTables(allItems);
-          return;
-        }
+            // Delegated click handler for variant elements.
+            document.addEventListener('click', function(e) {
+                // close triggers
+                if (e.target.closest('[data-modal-close]')) {
+                    closeModal();
+                    return;
+                }
 
-        // fallback single cell
-        allItems.push({label:'Data', value:text});
-        currentData = allItems;
-        renderDualTables(allItems);
-      }
+                const el = e.target.closest('.variant-row, .variant-card, [data-variant], .variant-item');
+                if (!el) return;
 
-      function renderDualTables(items){
-        const mid = Math.ceil(items.length / 2);
-        const leftItems = items.slice(0, mid);
-        const rightItems = items.slice(mid);
+                // Try dataset first
+                let text = el.getAttribute('data-variant') || el.dataset.variant;
 
-        // Left table
-        const leftTable = document.createElement('table');
-        leftTable.className = 'variant-table';
-        const leftHead = document.createElement('thead');
-        leftHead.innerHTML = '<tr><th>#</th><th>Value</th></tr>';
-        const leftBody = document.createElement('tbody');
-        leftItems.forEach(item=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.value)}</td>`;
-          leftBody.appendChild(tr);
-        });
-        leftTable.appendChild(leftHead);
-        leftTable.appendChild(leftBody);
-        tablewrap.appendChild(leftTable);
+                // If not provided, collect any nested .variant-code nodes
+                if (!text) {
+                    const codes = el.querySelectorAll('.variant-code');
+                    if (codes && codes.length) {
+                        text = Array.from(codes).map(n => n.textContent.trim()).join('\n');
+                    } else {
+                        // fallback to element's full text
+                        text = el.textContent.trim();
+                    }
+                }
 
-        // Right table (if has items)
-        if(rightItems.length > 0){
-          const rightTable = document.createElement('table');
-          rightTable.className = 'variant-table';
-          const rightHead = document.createElement('thead');
-          rightHead.innerHTML = '<tr><th>#</th><th>Value</th></tr>';
-          const rightBody = document.createElement('tbody');
-          rightItems.forEach(item=>{
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.value)}</td>`;
-            rightBody.appendChild(tr);
-          });
-          rightTable.appendChild(rightHead);
-          rightTable.appendChild(rightBody);
-          tablewrap.appendChild(rightTable);
-        }
-      }
+                // Determine a sensible variant name: prefer explicit attributes, then inner titles, then list index
+                let variantName = el.getAttribute('data-variant-name') || el.dataset.variantName || el.getAttribute('data-name') || el.dataset.name || '';
+                if (!variantName) {
+                    const titleNode = el.querySelector('.variant-title, .variant-name, .variant-meta strong, .project-row-title');
+                    if (titleNode) variantName = titleNode.textContent.trim();
+                }
+                if (!variantName) {
+                    // try to derive index among siblings
+                    const parent = el.parentElement;
+                    if (parent) {
+                        const children = Array.from(parent.children).filter(n => n.nodeType === 1);
+                        const idx = children.indexOf(el);
+                        if (idx >= 0) variantName = `video-${idx+1}`;
+                    }
+                }
+                if (!variantName) variantName = 'video-1';
 
-      function openModal(text){
-        renderGridFromText(text || '');
-        modal.classList.add('open');
-        modal.setAttribute('aria-hidden','false');
-        document.body.style.overflow = 'hidden';
-        const closeBtn = modal.querySelector('.variant-modal-close');
-        if(closeBtn) closeBtn.focus();
-      }
-
-      function closeModal(){
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden','true');
-        document.body.style.overflow = '';
-      }
-
-      // Delegated click handler for variant elements.
-      document.addEventListener('click', function(e){
-        // close triggers
-        if(e.target.closest('[data-modal-close]')){ closeModal(); return; }
-
-        const el = e.target.closest('.variant-row, .variant-card, [data-variant], .variant-item');
-        if(!el) return;
-
-        // Try dataset first
-        let text = el.getAttribute('data-variant') || el.dataset.variant;
-
-        // If not provided, collect any nested .variant-code nodes
-        if(!text){
-          const codes = el.querySelectorAll('.variant-code');
-          if(codes && codes.length){
-            text = Array.from(codes).map(n=>n.textContent.trim()).join('\n');
-          } else {
-            // fallback to element's full text
-            text = el.textContent.trim();
-          }
-        }
-
-        if(text) openModal(text);
-      });
-
-      // close on ESC
-      document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeModal(); });
-
-      // copy table content as plain text
-      if(copyBtn){
-        copyBtn.addEventListener('click', function(){
-          try{
-            let rows = [];
-            document.querySelectorAll('.variant-table tbody tr').forEach(tr=>{
-              const cells = Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim());
-              rows.push(cells.join('\t'));
+                if (text) openModal(text, variantName);
             });
-            const text = rows.join('\n');
-            navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : (function(){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); })();
-            // small toast
-            const toast = document.createElement('div'); toast.className='toast toast--success'; toast.textContent='Copied'; document.getElementById('toastContainer').appendChild(toast);
-            setTimeout(()=>{ toast.classList.add('toast--hide'); setTimeout(()=>toast.remove(),200); },900);
-          }catch(err){ console.error(err); }
-        });
-      }
-    })();
-  </script>
+
+            // close on ESC
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeModal();
+            });
+
+            // copy table content as plain text
+            if (copyBtn) {
+                copyBtn.addEventListener('click', function() {
+                    try {
+                        let rows = [];
+                        document.querySelectorAll('.variant-table tbody tr').forEach(tr => {
+                            const cells = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim());
+                            rows.push(cells.join('\t'));
+                        });
+                        const text = rows.join('\n');
+                        navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : (function() {
+                            const ta = document.createElement('textarea');
+                            ta.value = text;
+                            document.body.appendChild(ta);
+                            ta.select();
+                            document.execCommand('copy');
+                            ta.remove();
+                        })();
+                        // small toast
+                        const toast = document.createElement('div');
+                        toast.className = 'toast toast--success';
+                        toast.textContent = 'Copied';
+                        document.getElementById('toastContainer').appendChild(toast);
+                        setTimeout(() => {
+                            toast.classList.add('toast--hide');
+                            setTimeout(() => toast.remove(), 200);
+                        }, 900);
+                    } catch (err) {
+                        console.error(err);
+                    }
+                });
+            }
+
+            // Update displayed project name in the Variants header
+            // Prefer the project selected in the projects list; fall back to the projectName input
+            const currentProjectNameEl = document.getElementById('currentProjectName');
+            const projectNameInputEl = document.getElementById('projectName');
+
+            function getSelectedProjectName() {
+                const sel = document.querySelector('#projectsList .project-row.active, #projectsList .project-row.selected');
+                if (sel) {
+                    const titleEl = sel.querySelector('.project-row-title') || sel;
+                    const txt = titleEl ? titleEl.textContent.trim() : sel.textContent.trim();
+                    if (txt) return txt;
+                }
+                if (projectNameInputEl && projectNameInputEl.value && projectNameInputEl.value.trim()) return projectNameInputEl.value.trim();
+                return null;
+            }
+
+            function refreshProjectTitle() {
+                if (!currentProjectNameEl) return;
+                const v = getSelectedProjectName();
+                currentProjectNameEl.textContent = v ? `— ${v}` : '(Chưa chọn)';
+            }
+
+            // initial
+            refreshProjectTitle();
+
+            // update when user clicks project list (some code may toggle active class asynchronously)
+            const projectsListEl = document.getElementById('projectsList');
+            if (projectsListEl) {
+                projectsListEl.addEventListener('click', () => {
+                    setTimeout(refreshProjectTitle, 30);
+                });
+                // observe mutations so external code that sets .active will also update header
+                const mo = new MutationObserver(() => refreshProjectTitle());
+                mo.observe(projectsListEl, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+            }
+
+            // also update when input changes if there is no selected project
+            if (projectNameInputEl) {
+                projectNameInputEl.addEventListener('input', refreshProjectTitle);
+            }
+        })();
+    </script>
 </body>
+
 </html>

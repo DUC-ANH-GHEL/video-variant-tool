@@ -170,6 +170,13 @@ body {
     gap: 6px;
 }
 
+.current-project-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #60a5fa;
+    margin-left: 6px;
+}
+
 .card-title::before {
     content: "";
     width: 6px;
