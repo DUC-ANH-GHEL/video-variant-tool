@@ -177,7 +177,7 @@ function renderVariants(variants) {
         li.className = "variant-row";
         li.dataset.variantId = v.id;
 
-
+        li.dataset.variantName = v.name;
 
         const meta = document.createElement("div");
         meta.className = "variant-meta";
