@@ -20,6 +20,16 @@ const btnProjectNext = document.getElementById("btnProjectNext");
 // variants
 const variantsListEl = document.getElementById("variantsList");
 
+// variant modal
+const variantModal = document.getElementById("variantModal");
+const variantModalTableHead = document.getElementById("variantModalTableHead");
+const variantModalTableBody = document.getElementById("variantModalTableBody");
+const variantCopyBtn = document.getElementById("variantCopy");
+const variantStatusCheckbox = document.getElementById("variantStatusCheckbox");
+
+let currentVariants = [];
+let currentVariantIdInModal = null;
+
 // buttons
 const btnCreateProject = document.getElementById("btnCreateProject");
 const btnLoadProject = document.getElementById("btnLoadProject");
@@ -140,8 +150,12 @@ async function loadProject() {
     }
 }
 
+
 // ---------- VARIANTS RENDER ----------
 function renderVariants(variants) {
+    // lưu lại để modal dùng
+    currentVariants = Array.isArray(variants) ? [...variants] : [];
+
     variantsListEl.innerHTML = "";
     if (!variants || variants.length === 0) {
         const empty = document.createElement("li");
@@ -161,11 +175,25 @@ function renderVariants(variants) {
 
         const li = document.createElement("li");
         li.className = "variant-row";
+        li.dataset.variantId = v.id;
+
+
 
         const meta = document.createElement("div");
         meta.className = "variant-meta";
-        meta.innerHTML = `<strong>${v.name}</strong><span>ID ${v.id}</span>`;
+
+        // nếu chưa có status (dữ liệu cũ) thì mặc định coi là true
+        const isOn = v.status !== false;
+        const badgeClass = isOn ?
+            "variant-badge variant-badge-on" :
+            "variant-badge variant-badge-off";
+
+        meta.innerHTML = `
+    <span class="${badgeClass}">${v.name}</span>
+    <span class="variant-id">ID ${v.id}</span>
+`;
         li.appendChild(meta);
+
 
         const codes = v.segments
             .sort((a, b) => a.segment_index - b.segment_index)
@@ -176,15 +204,178 @@ function renderVariants(variants) {
             })
             .join(", ");
 
-
         const codeEl = document.createElement("div");
         codeEl.className = "variant-code";
         codeEl.textContent = `[${codes}]`;
         li.appendChild(codeEl);
 
+
+
+
+        // click cả dòng để mở modal
+        li.addEventListener("click", () => {
+            openVariantModal(v.id);
+        });
+
         variantsListEl.appendChild(li);
     });
 }
+
+
+// ---------- VARIANT MODAL LOGIC ----------
+
+function openVariantModal(variantId) {
+    const idNum = Number(variantId);
+    const variant = currentVariants.find((v) => v.id === idNum);
+    if (!variant || !variantModal) return;
+
+    currentVariantIdInModal = idNum;
+
+    // set checkbox status theo variant
+    if (variantStatusCheckbox) {
+        variantStatusCheckbox.checked = !!variant.status;
+    }
+
+    // render bảng chi tiết segments
+    const segments = [...variant.segments].sort(
+        (a, b) => a.segment_index - b.segment_index
+    );
+
+    variantModalTableHead.innerHTML = `
+        <tr>
+            <th>Segment</th>
+            <th>Clip</th>
+            <th>Mã</th>
+            <th>Kiểu edit</th>
+        </tr>
+    `;
+
+    variantModalTableBody.innerHTML = segments
+        .map((s) => {
+            const base = `${s.segment_index}.${s.clip_index}`;
+            const label = formatEditLabel(s);
+            const code = label ? `${base} (${label})` : base;
+            return `
+                <tr>
+                    <td>${s.segment_index}</td>
+                    <td>${s.clip_index}</td>
+                    <td>${code}</td>
+                    <td>${label || ""}</td>
+                </tr>
+            `;
+        })
+        .join("");
+
+    variantModal.classList.add("open");
+    variantModal.setAttribute("aria-hidden", "false");
+}
+
+function closeVariantModal() {
+    if (!variantModal) return;
+    variantModal.classList.remove("open");
+    variantModal.setAttribute("aria-hidden", "true");
+    currentVariantIdInModal = null;
+}
+
+// click backdrop hoặc nút close để đóng
+if (variantModal) {
+    variantModal.addEventListener("click", (e) => {
+        if (e.target.matches("[data-modal-close]")) {
+            closeVariantModal();
+        }
+    });
+}
+
+// copy code trong modal
+if (variantCopyBtn) {
+    variantCopyBtn.addEventListener("click", () => {
+        if (!currentVariantIdInModal) return;
+        const variant = currentVariants.find(
+            (v) => v.id === currentVariantIdInModal
+        );
+        if (!variant) return;
+
+        const clipsStr = [...variant.segments]
+            .sort((a, b) => a.segment_index - b.segment_index)
+            .map((s) => {
+                const base = `${s.segment_index}.${s.clip_index}`;
+                const label = formatEditLabel(s);
+                return label ? `${base} (${label})` : base;
+            })
+            .join(", ");
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard
+                .writeText(clipsStr)
+                .then(() => showToast("Đã copy mã biến thể.", "success"))
+                .catch(() => showToast("Copy không thành công.", "error"));
+        } else {
+            showToast("Trình duyệt không hỗ trợ copy tự động.", "error");
+        }
+    });
+}
+
+// khi thay đổi status trong modal => gọi API PATCH
+if (variantStatusCheckbox) {
+    variantStatusCheckbox.addEventListener("change", async() => {
+        if (!currentVariantIdInModal) return;
+
+        const newStatus = variantStatusCheckbox.checked;
+        const variantId = currentVariantIdInModal;
+
+        try {
+            const res = await fetch(
+                `${API_BASE}/variants/${variantId}/status`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: newStatus }),
+                }
+            );
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(
+                    data.error || "Cập nhật status biến thể thất bại.",
+                    "error"
+                );
+                // rollback lại checkbox
+                variantStatusCheckbox.checked = !newStatus;
+                return;
+            }
+
+            // update lại trong currentVariants
+            const idx = currentVariants.findIndex((v) => v.id === variantId);
+            if (idx !== -1) {
+                currentVariants[idx] = {
+                    ...currentVariants[idx],
+                    status: data.status,
+                };
+            }
+
+            // re-render list để checkbox ở list cập nhật
+            renderVariants(currentVariants);
+
+            // update màu cho modal checkbox nếu cần
+            if (newStatus) {
+                variantStatusCheckbox.parentElement.classList.add("checked");
+                variantStatusCheckbox.parentElement.classList.remove("unchecked");
+            } else {
+                variantStatusCheckbox.parentElement.classList.add("unchecked");
+                variantStatusCheckbox.parentElement.classList.remove("checked");
+            }
+
+
+            showToast(
+                `Đã ${newStatus ? "bật" : "tắt"} status cho biến thể #${variantId}.`,
+                "success"
+            );
+        } catch (err) {
+            console.error(err);
+            showToast("Lỗi gọi API khi cập nhật status.", "error");
+            variantStatusCheckbox.checked = !newStatus;
+        }
+    });
+}
+
 
 
 // ---------- TẠO BIẾN THỂ MỚI ----------
@@ -207,7 +398,8 @@ btnNewVariant.addEventListener("click", async() => {
             return;
         }
 
-        const clips = data.variant.segments
+        const first = data.variants[0];
+        const clips = first.segments
             .sort((a, b) => a.segment_index - b.segment_index)
             .map((s) => `${s.segment_index}.${s.clip_index}`)
             .join(", ");

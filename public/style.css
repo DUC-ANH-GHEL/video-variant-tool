@@ -459,13 +459,36 @@ button:disabled {
     background: #020617;
 }
 
-.variant-row {
+
+/* .variant-row {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 8px;
     padding: 8px 11px;
     font-size: 12px;
     border-bottom: 1px solid #111827;
+} */
+
+.variant-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    padding: 8px 11px;
+    font-size: 12px;
+    border-bottom: 1px solid #111827;
+}
+
+.variant-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.variant-status input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: default;
+    /* bị disable nên không cần pointer */
 }
 
 .variant-row:nth-child(odd) {
@@ -482,6 +505,47 @@ button:disabled {
     gap: 2px;
     min-width: 90px;
     color: var(--text-muted);
+}
+
+.variant-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 90px;
+    color: var(--text-muted);
+}
+
+
+/* Ô màu bao quanh "Video - N" */
+
+.variant-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+
+/* TRUE → đỏ */
+
+.variant-badge-on {
+    background-color: #ef4444;
+}
+
+
+/* FALSE → xanh lá */
+
+.variant-badge-off {
+    background-color: #22c55e;
+}
+
+.variant-id {
+    font-size: 11px;
+    opacity: 0.8;
 }
 
 .variant-meta strong {
@@ -829,4 +893,91 @@ button:disabled {
     padding: 9px 14px;
     font-size: 13px;
     border-color: rgba(59, 130, 246, 0.3)
+}
+
+
+/* STATUS BOX COLORING */
+
+.variant-status {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* Checkbox ẩn để dùng màu của wrapper */
+
+.variant-status input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: default;
+    opacity: 0;
+    /* ẩn checkbox thật */
+    position: absolute;
+}
+
+
+/* MÀU KHI ĐÃ TICK (TRUE) → ĐỎ */
+
+.variant-status.checked {
+    background-color: #ef4444;
+}
+
+
+/* MÀU KHI CHƯA TICK (FALSE) → XANH LÁ */
+
+.variant-status.unchecked {
+    background-color: #22c55e;
+}
+
+
+/* STATUS BOX (wrapper) */
+
+.variant-status {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+
+/* Ẩn checkbox thật */
+
+.variant-status input[type="checkbox"] {
+    opacity: 0;
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+
+
+/* TRẠNG THÁI TRUE → đỏ + X */
+
+.variant-status.checked {
+    background-color: #ef4444;
+    /* đỏ */
+}
+
+.variant-status.checked::after {
+    content: "X";
+}
+
+
+/* TRẠNG THÁI FALSE → xanh + O */
+
+.variant-status.unchecked {
+    background-color: #22c55e;
+    /* xanh lá */
+}
+
+.variant-status.unchecked::after {
+    content: "O";
 }
