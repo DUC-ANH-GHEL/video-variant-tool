@@ -442,6 +442,7 @@
 
                 // Determine a sensible variant name: prefer explicit attributes, then inner titles, then list index
                 let variantName = el.getAttribute('data-variant-name') || el.dataset.variantName || el.getAttribute('data-name') || el.dataset.name || '';
+                console.log(variantName);
                 if (!variantName) {
                     const titleNode = el.querySelector('.variant-title, .variant-name, .variant-meta strong, .project-row-title');
                     if (titleNode) variantName = titleNode.textContent.trim();
