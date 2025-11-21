@@ -371,6 +371,9 @@ if (variantStatusCheckbox) {
                 `Đã ${newStatus ? "bật" : "tắt"} status cho biến thể #${variantId}.`,
                 "success"
             );
+
+            // close modal after updating status
+            closeVariantModal();
         } catch (err) {
             console.error(err);
             showToast("Lỗi gọi API khi cập nhật status.", "error");
