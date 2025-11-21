@@ -146,6 +146,12 @@
         <div class="global-loader-panel">
             <div class="spinner" aria-hidden="true"></div>
             <div class="loader-text">Loading…</div>
+            <div class="loader-info">
+                <div class="loader-percent" aria-hidden="true">0%</div>
+                <div class="loader-bar" aria-hidden="true">
+                    <div class="loader-bar-fill" style="width:0%"></div>
+                </div>
+            </div>
         </div>
     </div>
     <!-- Variant modal (hidden by default) -->
@@ -201,11 +207,23 @@
                         const t = _globalLoader.querySelector('.loader-text');
                         if (t) t.textContent = message;
                     }
+                    // start simulated progress if not already
+                    startProgressSimulation();
                     _updateLoader();
                 }
 
                 function hideLoading() {
                     _loadingCount = Math.max(0, _loadingCount - 1);
+                    if (_loadingCount <= 0) {
+                        // finalize to 100% then hide
+                        setLoadingPercent(100);
+                        setTimeout(() => {
+                            stopProgressSimulation();
+                            _updateLoader();
+                            // reset percent display after brief delay
+                            setLoadingPercent(null);
+                        }, 300);
+                    }
                     _updateLoader();
                 }
 
@@ -240,6 +258,56 @@
                         }
                         return _origSend.apply(this, arguments);
                     };
+                }
+
+                // Progress simulation controller
+                let _currentPercent = null; // null means hidden
+                let _progressInterval = null;
+                function setLoadingPercent(pct) {
+                    const pctEl = _globalLoader && _globalLoader.querySelector('.loader-percent');
+                    const fillEl = _globalLoader && _globalLoader.querySelector('.loader-bar-fill');
+                    if (pct == null) {
+                        _currentPercent = null;
+                        if (pctEl) pctEl.textContent = '';
+                        if (fillEl) fillEl.style.width = '0%';
+                        return;
+                    }
+                    pct = Math.max(0, Math.min(100, Math.round(pct)));
+                    _currentPercent = pct;
+                    if (pctEl) pctEl.textContent = pct + '%';
+                    if (fillEl) fillEl.style.width = pct + '%';
+                }
+
+                function startProgressSimulation() {
+                    if (!_globalLoader) return;
+                    // if already running, do nothing
+                    if (_progressInterval) return;
+                    // ensure percent visible
+                    setLoadingPercent(0);
+                    _progressInterval = setInterval(() => {
+                        if (_currentPercent == null) _currentPercent = 0;
+                        // increase by a small random amount, cap at 85
+                        const inc = 3 + Math.floor(Math.random() * 6);
+                        const next = Math.min(85, _currentPercent + inc);
+                        setLoadingPercent(next);
+                        if (next >= 85) {
+                            // slow down increases
+                            clearInterval(_progressInterval);
+                            _progressInterval = setInterval(() => {
+                                if (_currentPercent == null) _currentPercent = 85;
+                                const inc2 = Math.random() < 0.5 ? 0 : 1;
+                                const next2 = Math.min(85, _currentPercent + inc2);
+                                setLoadingPercent(next2);
+                            }, 800);
+                        }
+                    }, 180);
+                }
+
+                function stopProgressSimulation() {
+                    if (_progressInterval) {
+                        clearInterval(_progressInterval);
+                        _progressInterval = null;
+                    }
                 }
             const tablewrap = document.querySelector('.variant-modal-tablewrap');
             const copyBtn = document.getElementById('variantCopy');
