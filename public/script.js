@@ -105,6 +105,9 @@ btnCreateProject.addEventListener("click", async() => {
         showToast("Tạo project thành công. ID = " + data.id, "success");
         await loadProjects(currentProjectPage);
         await loadProject();
+
+        // 👇 Tạo luôn toàn bộ biến thể cho project vừa tạo
+        await createAllVariantsForCurrentProject(true);
     } catch (err) {
         console.error(err);
         showToast("Lỗi gọi API khi tạo project.", "error");
@@ -379,15 +382,22 @@ if (variantStatusCheckbox) {
 
 
 // ---------- TẠO BIẾN THỂ MỚI ----------
-btnNewVariant.addEventListener("click", async() => {
+
+// ---------- HÀM CHUNG: TẠO TẤT CẢ BIẾN THỂ CHO PROJECT HIỆN TẠI ----------
+async function createAllVariantsForCurrentProject(autoFromCreate = false) {
     const projectId = parseInt(projectIdInput.value || selectedProjectId, 10);
     if (!projectId) {
-        showToast("Chọn hoặc nhập Project ID trước.", "error");
+        // nếu gọi từ nút "Tạo biến thể" thì mới báo lỗi
+        if (!autoFromCreate) {
+            showToast("Chọn hoặc nhập Project ID trước.", "error");
+        }
         return;
     }
 
     try {
-        setButtonLoading(btnNewVariant, true, "Đang tạo...");
+        const loadingText = autoFromCreate ? "Đang tạo biến thể..." : "Đang tạo...";
+        setButtonLoading(btnNewVariant, true, loadingText);
+
         const res = await fetch(`${API_BASE}/projects/${projectId}/variants`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -398,13 +408,25 @@ btnNewVariant.addEventListener("click", async() => {
             return;
         }
 
-        const first = data.variants[0];
-        const clips = first.segments
-            .sort((a, b) => a.segment_index - b.segment_index)
-            .map((s) => `${s.segment_index}.${s.clip_index}`)
-            .join(", ");
+        const count = data.count ?? (data.variants ? data.variants.length : 0);
 
-        showToast(`Tạo biến thể mới: [${clips}]`, "success");
+        if (data.variants && data.variants.length > 0) {
+            const first = data.variants[0];
+            const clips = first.segments
+                .sort((a, b) => a.segment_index - b.segment_index)
+                .map((s) => `${s.segment_index}.${s.clip_index}`)
+                .join(", ");
+
+            if (count > 1) {
+                showToast(`Tạo ${count} biến thể mới. Ví dụ: [${clips}]`, "success");
+            } else {
+                showToast(`Tạo biến thể mới: [${clips}]`, "success");
+            }
+        } else {
+            showToast("Không tạo được biến thể mới nào.", "error");
+        }
+
+        // load lại project để list biến thể cập nhật
         await loadProject();
     } catch (err) {
         console.error(err);
@@ -412,7 +434,46 @@ btnNewVariant.addEventListener("click", async() => {
     } finally {
         setButtonLoading(btnNewVariant, false);
     }
+}
+
+btnNewVariant.addEventListener("click", () => {
+    createAllVariantsForCurrentProject(false);
 });
+
+// btnNewVariant.addEventListener("click", async () => {
+//     const projectId = parseInt(projectIdInput.value || selectedProjectId, 10);
+//     if (!projectId) {
+//         showToast("Chọn hoặc nhập Project ID trước.", "error");
+//         return;
+//     }
+
+//     try {
+//         setButtonLoading(btnNewVariant, true, "Đang tạo...");
+//         const res = await fetch(`${API_BASE}/projects/${projectId}/variants`, {
+//             method: "POST",
+//             headers: { "Content-Type": "application/json" },
+//         });
+//         const data = await res.json();
+//         if (!res.ok) {
+//             showToast("Lỗi tạo biến thể: " + (data.error || "Unknown"), "error");
+//             return;
+//         }
+
+//         const first = data.variants[0];
+//         const clips = first.segments
+//             .sort((a, b) => a.segment_index - b.segment_index)
+//             .map((s) => `${s.segment_index}.${s.clip_index}`)
+//             .join(", ");
+
+//         showToast(`Tạo biến thể mới: [${clips}]`, "success");
+//         await loadProject();
+//     } catch (err) {
+//         console.error(err);
+//         showToast("Lỗi gọi API khi tạo biến thể.", "error");
+//     } finally {
+//         setButtonLoading(btnNewVariant, false);
+//     }
+// });
 
 // ---------- PROJECT LIST + SEARCH + PAGINATION ----------
 btnProjectSearch.addEventListener("click", () => {
