@@ -318,13 +318,118 @@ if (variantCopyBtn) {
     });
 }
 
+// Confirmation modal helper
+let confirmModalResolve = null;
+let confirmModalEscapeHandler = null;
+
+function showConfirmModal(title, message) {
+    return new Promise((resolve) => {
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmModalTitle = document.getElementById('confirmModalTitle');
+        const confirmModalMessage = document.getElementById('confirmModalMessage');
+        const confirmModalOk = document.getElementById('confirmModalOk');
+        const confirmModalCancel = document.getElementById('confirmModalCancel');
+        
+        if (!confirmModal) {
+            resolve(false);
+            return;
+        }
+        
+        confirmModalResolve = resolve;
+        
+        if (confirmModalTitle) confirmModalTitle.textContent = title;
+        if (confirmModalMessage) confirmModalMessage.textContent = message;
+        
+        confirmModal.classList.add('open');
+        confirmModal.setAttribute('aria-hidden', 'false');
+        
+        const handleOk = () => {
+            closeConfirmModal();
+            confirmModalResolve?.(true);
+            confirmModalResolve = null;
+        };
+        
+        const handleCancel = () => {
+            closeConfirmModal();
+            confirmModalResolve?.(false);
+            confirmModalResolve = null;
+        };
+        
+        const handleBackdropClick = (e) => {
+            if (e.target.id === 'confirmModal') {
+                handleCancel();
+            }
+        };
+        
+        // bind listeners
+        confirmModalOk.onclick = handleOk;
+        confirmModalCancel.onclick = handleCancel;
+        confirmModal.onclick = handleBackdropClick;
+        
+        // cleanup on escape key
+        confirmModalEscapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                handleCancel();
+            }
+        };
+        document.addEventListener('keydown', confirmModalEscapeHandler);
+    });
+}
+
+function closeConfirmModal() {
+    const confirmModal = document.getElementById('confirmModal');
+    if (!confirmModal) return;
+    confirmModal.classList.remove('open');
+    confirmModal.setAttribute('aria-hidden', 'true');
+    
+    // remove escape listener
+    if (confirmModalEscapeHandler) {
+        document.removeEventListener('keydown', confirmModalEscapeHandler);
+        confirmModalEscapeHandler = null;
+    }
+}
+
 // khi thay đổi status trong modal => gọi API PATCH
 if (variantStatusCheckbox) {
-    variantStatusCheckbox.addEventListener("change", async() => {
-        if (!currentVariantIdInModal) return;
+    // Use change event to detect toggle, but revert immediately if not confirmed
+    variantStatusCheckbox.addEventListener("change", async(e) => {
+        if (!currentVariantIdInModal) {
+            console.warn("No variant ID in modal");
+            return;
+        }
 
-        const newStatus = variantStatusCheckbox.checked;
+        // The checkbox has already been toggled by the browser
+        // We need to revert it immediately and ask for confirmation
+        const attemptedStatus = variantStatusCheckbox.checked; // this is what user tried to set
+        const currentStatus = !attemptedStatus; // revert to see what it was before
+        
+        // Revert the checkbox back to its original state
+        variantStatusCheckbox.checked = currentStatus;
+        
+        const newStatus = attemptedStatus; // the status user is trying to set
         const variantId = currentVariantIdInModal;
+
+        console.log("Status toggle attempted:", {
+            currentStatus: currentStatus,
+            newStatus: newStatus,
+            variantId: variantId
+        });
+
+        // show custom confirmation modal
+        const confirmTitle = newStatus ? "Xác nhận - TẠO" : "Xác nhận - BỎ";
+        const confirmMsg = newStatus 
+            ? "Bạn chắc chắn muốn đánh dấu biến thể này là đã tạo?" 
+            : "Bạn chắc chắn muốn bỏ đánh dấu biến thể này?";
+        
+        const confirmed = await showConfirmModal(confirmTitle, confirmMsg);
+        
+        if (!confirmed) {
+            console.log("Confirmation cancelled, checkbox stays at:", currentStatus);
+            // user cancelled, checkbox already reverted
+            return;
+        }
+
+        console.log("Confirmed, making API call with newStatus:", newStatus);
 
         try {
             const res = await fetch(
@@ -336,14 +441,15 @@ if (variantStatusCheckbox) {
             );
             const data = await res.json();
             if (!res.ok) {
+                console.error("API error:", data);
                 showToast(
                     data.error || "Cập nhật status biến thể thất bại.",
                     "error"
                 );
-                // rollback lại checkbox
-                variantStatusCheckbox.checked = !newStatus;
                 return;
             }
+
+            console.log("API success, updating UI...");
 
             // update lại trong currentVariants
             const idx = currentVariants.findIndex((v) => v.id === variantId);
@@ -353,6 +459,9 @@ if (variantStatusCheckbox) {
                     status: data.status,
                 };
             }
+
+            // NOW set checkbox to the new confirmed status
+            variantStatusCheckbox.checked = newStatus;
 
             // re-render list để checkbox ở list cập nhật
             renderVariants(currentVariants);
@@ -375,9 +484,8 @@ if (variantStatusCheckbox) {
             // close modal after updating status
             closeVariantModal();
         } catch (err) {
-            console.error(err);
+            console.error("API call error:", err);
             showToast("Lỗi gọi API khi cập nhật status.", "error");
-            variantStatusCheckbox.checked = !newStatus;
         }
     });
 }

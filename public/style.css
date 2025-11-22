@@ -1021,4 +1021,67 @@ button:disabled {
 .variant-status.unchecked::after {
     content: "O";
 }
+
+
+/* ---------------- CONFIRMATION MODAL (centered popup) ---------------- */
+
+.confirm-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.confirm-modal.open {
+    display: flex;
+    pointer-events: auto;
+}
+
+.confirm-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.5);
+    backdrop-filter: blur(3px);
+}
+
+.confirm-modal-panel {
+    position: relative;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98));
+    border-radius: 14px;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: 0 20px 60px rgba(2, 6, 23, 0.8);
+    max-width: 380px;
+    width: 90%;
+    z-index: 1;
+}
+
+.confirm-modal-title {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.confirm-modal-message {
+    margin: 0 0 20px;
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.confirm-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.confirm-modal-actions button {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 13px;
+}
 .loading-active .app { pointer-events: none; }

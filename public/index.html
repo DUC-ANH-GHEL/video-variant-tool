@@ -141,6 +141,18 @@
 
     <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
+    <!-- Confirmation modal (centered popup) -->
+    <div id="confirmModal" class="confirm-modal" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="confirm-modal-backdrop" data-confirm-close></div>
+        <div class="confirm-modal-panel" role="document">
+            <h3 id="confirmModalTitle" class="confirm-modal-title">Xác nhận</h3>
+            <p id="confirmModalMessage" class="confirm-modal-message">Bạn chắc chắn muốn tiếp tục?</p>
+            <div class="confirm-modal-actions">
+                <button id="confirmModalCancel" class="btn-outline">Hủy</button>
+                <button id="confirmModalOk" class="btn-primary">Xác nhận</button>
+            </div>
+        </div>
+    </div>
     <!-- Global loading overlay -->
     <div id="globalLoader" class="global-loader" aria-hidden="true" aria-live="assertive">
         <div class="global-loader-panel">
