@@ -738,7 +738,8 @@ function renderProjectList(projects) {
         // meta
         const meta = document.createElement("div");
         meta.className = "project-row-meta";
-        meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${p.clips_per_segment} clip/đoạn`;
+        const variantInfo = p.total_variants ? `${p.completed_variants}/${p.total_variants} biến thể DONE` : "0/0 biến thể DONE";
+        meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${p.clips_per_segment} clip/đoạn • ${variantInfo}`;
         li.appendChild(meta);
 
         // click vào cả row để chọn project

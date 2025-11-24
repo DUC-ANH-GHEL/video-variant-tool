@@ -86,8 +86,26 @@ app.get("/api/projects", async(req, res) => {
         const total = parseInt(countRes.rows[0].count, 10);
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
+        // Get variant counts for each project
+        const projectsWithCounts = await Promise.all(
+            listRes.rows.map(async (project) => {
+                const variantCountRes = await pool.query(
+                    `SELECT COUNT(*) as total, 
+                            SUM(CASE WHEN status = true THEN 1 ELSE 0 END) as completed
+                     FROM variants WHERE project_id = $1`,
+                    [project.id]
+                );
+                const counts = variantCountRes.rows[0];
+                return {
+                    ...project,
+                    total_variants: parseInt(counts.total, 10),
+                    completed_variants: parseInt(counts.completed || 0, 10)
+                };
+            })
+        );
+
         res.json({
-            projects: listRes.rows,
+            projects: projectsWithCounts,
             pagination: {
                 page,
                 limit,
