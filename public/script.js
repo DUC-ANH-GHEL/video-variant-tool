@@ -636,6 +636,13 @@ async function loadProjects(page = 1) {
         projectPageInfo.textContent =
             `Trang ${currentProjectPage}/${totalProjectPages}`;
 
+        // show total projects count if element exists
+        const totalCountEl = document.getElementById('projectTotalCount');
+        if (totalCountEl) {
+            const totalProjects = data.pagination.total || 0;
+            totalCountEl.textContent = `Tổng: ${totalProjects}`;
+        }
+
         renderProjectList(data.projects);
         highlightSelectedProjectRow();
     } catch (err) {
