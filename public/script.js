@@ -1,6 +1,33 @@
 // const API_BASE = "http://localhost:3000/api";
 const API_BASE = "/api";
 
+// ---------- Auth Token Management ----------
+let authToken = localStorage.getItem("authToken") || null;
+
+function setAuthToken(token) {
+    authToken = token;
+    if (token) {
+        localStorage.setItem("authToken", token);
+    } else {
+        localStorage.removeItem("authToken");
+    }
+}
+
+async function apiFetch(url, options = {}) {
+    const headers = options.headers ? { ...options.headers } : {};
+    if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    const res = await fetch(url, { ...options, headers });
+    // Handle 401 Unauthorized – token expired or invalid
+    if (res.status === 401) {
+        setAuthToken(null);
+        updateUserUI();
+        openAuthModal();
+        throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+    }
+    return res;
+}
 
 // form & project detail
 const projectNameInput = document.getElementById("projectName");
@@ -35,6 +62,15 @@ let currentVariantIdInModal = null;
 const btnCreateProject = document.getElementById("btnCreateProject");
 const btnLoadProject = document.getElementById("btnLoadProject");
 const btnNewVariant = document.getElementById("btnNewVariant");
+
+// auth elements
+const authModal = document.getElementById("authModal");
+const authEmail = document.getElementById("authEmail");
+const authPassword = document.getElementById("authPassword");
+const authLoginBtn = document.getElementById("authLoginBtn");
+const authRegisterBtn = document.getElementById("authRegisterBtn");
+const currentUserEmailEl = document.getElementById("currentUserEmail");
+const btnLogout = document.getElementById("btnLogout");
 
 let currentProjectPage = 1;
 let totalProjectPages = 1;
@@ -96,6 +132,89 @@ function formatClipInfo(project) {
     return `${base} (tùy chỉnh: ${segClips.join(", ")})`;
 }
 
+// ---------- AUTH HELPERS ----------
+function openAuthModal() {
+    authModal.classList.add("open");
+    authModal.setAttribute("aria-hidden", "false");
+    authEmail.value = "";
+    authPassword.value = "";
+    authEmail.focus();
+}
+
+function closeAuthModal() {
+    authModal.classList.remove("open");
+    authModal.setAttribute("aria-hidden", "true");
+}
+
+function updateUserUI() {
+    if (authToken) {
+        // decode payload to get email
+        try {
+            const payload = JSON.parse(atob(authToken.split(".")[1]));
+            currentUserEmailEl.textContent = payload.email || "(Đã đăng nhập)";
+        } catch {
+            currentUserEmailEl.textContent = "(Đã đăng nhập)";
+        }
+        btnLogout.style.display = "inline-block";
+    } else {
+        currentUserEmailEl.textContent = "(Chưa đăng nhập)";
+        btnLogout.style.display = "none";
+    }
+}
+
+async function handleAuth(mode) {
+    const email = authEmail.value.trim();
+    const password = authPassword.value.trim();
+    if (!email || !password) {
+        showToast("Nhập email và mật khẩu.", "error");
+        return;
+    }
+    const btn = mode === "login" ? authLoginBtn : authRegisterBtn;
+    setButtonLoading(btn, true, "Đang xử lý…");
+    try {
+        const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Lỗi xác thực");
+        setAuthToken(data.token);
+        updateUserUI();
+        closeAuthModal();
+        showToast(mode === "login" ? "Đăng nhập thành công!" : "Đăng ký thành công!", "success");
+        loadProjects(1);
+    } catch (err) {
+        showToast(err.message, "error");
+    } finally {
+        setButtonLoading(btn, false);
+    }
+}
+
+// Auth event listeners
+authLoginBtn.addEventListener("click", () => handleAuth("login"));
+authRegisterBtn.addEventListener("click", () => handleAuth("register"));
+btnLogout.addEventListener("click", () => {
+    setAuthToken(null);
+    updateUserUI();
+    showToast("Đã đăng xuất.", "info");
+    // Clear project list
+    projectsListEl.innerHTML = '<li class="project-item-empty">Chưa đăng nhập.</li>';
+    variantsListEl.innerHTML = '<li class="variant-empty">Chưa chọn project nào.</li>';
+    projectInfoDiv.innerHTML = "";
+    selectedProjectId = null;
+    openAuthModal();
+});
+currentUserEmailEl.addEventListener("click", () => {
+    if (!authToken) openAuthModal();
+});
+// Close auth modal when clicking backdrop
+authModal.querySelector("[data-auth-close]").addEventListener("click", () => {
+    // Only allow close if logged in
+    if (authToken) closeAuthModal();
+});
+
 // ---------- CREATE PROJECT ----------
 btnCreateProject.addEventListener("click", async() => {
     const name = projectNameInput.value.trim();
@@ -142,7 +261,7 @@ btnCreateProject.addEventListener("click", async() => {
 
     try {
         setButtonLoading(btnCreateProject, true, "Đang tạo...");
-        const res = await fetch(`${API_BASE}/projects`, {
+        const res = await apiFetch(`${API_BASE}/projects`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -184,7 +303,7 @@ async function loadProject() {
     }
     try {
         setButtonLoading(btnLoadProject, true, "Đang load...");
-        const res = await fetch(`${API_BASE}/projects/${projectId}`);
+        const res = await apiFetch(`${API_BASE}/projects/${projectId}`);
         const data = await res.json();
         if (!res.ok) {
             showToast(data.error || "Không load được project", "error");
@@ -491,7 +610,7 @@ if (variantStatusCheckbox) {
         console.log("Confirmed, making API call with newStatus:", newStatus);
 
         try {
-            const res = await fetch(
+            const res = await apiFetch(
                 `${API_BASE}/variants/${variantId}/status`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
@@ -568,7 +687,7 @@ async function createAllVariantsForCurrentProject(autoFromCreate = false) {
         const loadingText = autoFromCreate ? "Đang tạo biến thể..." : "Đang tạo...";
         setButtonLoading(btnNewVariant, true, loadingText);
 
-        const res = await fetch(`${API_BASE}/projects/${projectId}/variants`, {
+        const res = await apiFetch(`${API_BASE}/projects/${projectId}/variants`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
         });
@@ -682,7 +801,7 @@ async function loadProjects(page = 1) {
             limit: limit.toString(),
             search,
         });
-        const res = await fetch(`${API_BASE}/projects?` + params.toString());
+        const res = await apiFetch(`${API_BASE}/projects?` + params.toString());
         const data = await res.json();
         if (!res.ok) {
             console.error(data);
@@ -726,7 +845,7 @@ async function deleteProject(projectId, btnElement, projectName) {
     try {
         btnElement.disabled = true;
         btnElement.textContent = "Đang xoá...";
-        const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+        const res = await apiFetch(`${API_BASE}/projects/${projectId}`, {
             method: "DELETE",
         });
         const data = await res.json();
@@ -840,6 +959,16 @@ function formatEditLabel(seg) {
 }
 
 
+// ---------- INIT APP WITH AUTH ----------
+function initAppWithAuth() {
+    updateUserUI();
+    if (authToken) {
+        loadProjects(1);
+    } else {
+        openAuthModal();
+        projectsListEl.innerHTML = '<li class="project-item-empty">Vui lòng đăng nhập.</li>';
+    }
+}
 
 // load list project lần đầu
-loadProjects(1);
+initAppWithAuth();

@@ -1,5 +1,10 @@
 require("dotenv").config();
 const express = require("express");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+const JWT_SECRET = process.env.JWT_SECRET || "please_change_this_secret";
+
 const cors = require("cors");
 const { Pool } = require("pg");
 
@@ -30,10 +35,117 @@ function shuffle(array) {
     return array;
 }
 
+function createToken(user) {
+    return jwt.sign(
+        { userId: user.id, email: user.email },
+        JWT_SECRET,
+        { expiresIn: "30d" }
+    );
+}
+
+function authMiddleware(req, res, next) {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+    if (!token) {
+        return res.status(401).json({ error: "Missing auth token" });
+    }
+
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        req.userId = payload.userId;
+        req.userEmail = payload.email;
+        next();
+    } catch (err) {
+        console.error("JWT error:", err);
+        return res.status(401).json({ error: "Invalid or expired token" });
+    }
+}
+
+
 // ========== API ==========
 
+// ---------- AUTH ----------
+app.post("/api/auth/register", async (req, res) => {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+        return res.status(400).json({ error: "Thiếu email / password" });
+    }
+
+    try {
+        const lowerEmail = email.toLowerCase();
+        const exist = await pool.query(
+            "SELECT id FROM users WHERE email = $1",
+            [lowerEmail]
+        );
+        if (exist.rows.length > 0) {
+            return res.status(400).json({ error: "Email đã tồn tại" });
+        }
+
+        const hash = await bcrypt.hash(password, 10);
+        const result = await pool.query(
+            `INSERT INTO users (email, password_hash)
+             VALUES ($1, $2)
+             RETURNING id, email, created_at`,
+            [lowerEmail, hash]
+        );
+        const user = result.rows[0];
+        const token = createToken(user);
+
+        res.json({
+            token,
+            user: { id: user.id, email: user.email }
+        });
+    } catch (err) {
+        console.error("Register error:", err);
+        res.status(500).json({ error: "Lỗi server khi đăng ký" });
+    }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+        return res.status(400).json({ error: "Thiếu email / password" });
+    }
+
+    try {
+        const lowerEmail = email.toLowerCase();
+        const result = await pool.query(
+            "SELECT id, email, password_hash FROM users WHERE email = $1",
+            [lowerEmail]
+        );
+        if (result.rows.length === 0) {
+            return res.status(400).json({ error: "Email hoặc mật khẩu không đúng" });
+        }
+
+        const user = result.rows[0];
+        const ok = await bcrypt.compare(password, user.password_hash);
+        if (!ok) {
+            return res.status(400).json({ error: "Email hoặc mật khẩu không đúng" });
+        }
+
+        const token = createToken(user);
+        res.json({
+            token,
+            user: { id: user.id, email: user.email }
+        });
+    } catch (err) {
+        console.error("Login error:", err);
+        res.status(500).json({ error: "Lỗi server khi đăng nhập" });
+    }
+});
+
+app.get("/api/me", authMiddleware, async (req, res) => {
+    // Token hợp lệ => trả về info cơ bản
+    res.json({
+        id: req.userId,
+        email: req.userEmail
+    });
+});
+
+// ---------- PROJECTS & VARIANTS ----------
 // Tạo project mới
-app.post("/api/projects", async (req, res) => {
+app.post("/api/projects", authMiddleware, async (req, res) => {
     try {
         const {
             name,
@@ -83,10 +195,10 @@ app.post("/api/projects", async (req, res) => {
         console.log('Creating project with segmentClips:', segmentClipsJson);
 
         const result = await pool.query(
-            `INSERT INTO projects (name, segment_count, clips_per_segment, segment_clips)
-             VALUES ($1, $2, $3, $4::jsonb)
+            `INSERT INTO projects (user_id, name, segment_count, clips_per_segment, segment_clips)
+             VALUES ($1, $2, $3, $4, $5::jsonb)
              RETURNING id, name, segment_count, clips_per_segment, segment_clips, created_at`,
-            [name, N, M, segmentClipsJson]
+            [req.userId, name, N, M, segmentClipsJson]
         );
 
         res.json(result.rows[0]);
@@ -98,7 +210,73 @@ app.post("/api/projects", async (req, res) => {
     }
 });
 
-app.get("/api/projects", async(req, res) => {
+// app.get("/api/projects", async(req, res) => {
+//     const page = parseInt(req.query.page || "1", 10);
+//     const limit = parseInt(req.query.limit || "10", 10);
+//     const search = (req.query.search || "").trim();
+
+//     const offset = (page - 1) * limit;
+
+//     try {
+//         let countRes, listRes;
+
+//         if (search) {
+//             countRes = await pool.query(
+//                 `SELECT COUNT(*) FROM projects
+//          WHERE name ILIKE '%' || $1 || '%' OR CAST(id AS TEXT) = $1`, [search]
+//             );
+//             listRes = await pool.query(
+//                 `SELECT * FROM projects
+//          WHERE name ILIKE '%' || $1 || '%' OR CAST(id AS TEXT) = $1
+//          ORDER BY created_at DESC
+//          LIMIT $2 OFFSET $3`, [search, limit, offset]
+//             );
+//         } else {
+//             countRes = await pool.query("SELECT COUNT(*) FROM projects");
+//             listRes = await pool.query(
+//                 `SELECT * FROM projects
+//          ORDER BY created_at DESC
+//          LIMIT $1 OFFSET $2`, [limit, offset]
+//             );
+//         }
+
+//         const total = parseInt(countRes.rows[0].count, 10);
+//         const totalPages = Math.max(1, Math.ceil(total / limit));
+
+//         // Get variant counts for each project
+//         const projectsWithCounts = await Promise.all(
+//             listRes.rows.map(async (project) => {
+//                 const variantCountRes = await pool.query(
+//                     `SELECT COUNT(*) as total, 
+//                             SUM(CASE WHEN status = true THEN 1 ELSE 0 END) as completed
+//                      FROM variants WHERE project_id = $1`,
+//                     [project.id]
+//                 );
+//                 const counts = variantCountRes.rows[0];
+//                 return {
+//                     ...project,
+//                     total_variants: parseInt(counts.total, 10),
+//                     completed_variants: parseInt(counts.completed || 0, 10)
+//                 };
+//             })
+//         );
+
+//         res.json({
+//             projects: projectsWithCounts,
+//             pagination: {
+//                 page,
+//                 limit,
+//                 total,
+//                 totalPages,
+//             },
+//         });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ error: "Lỗi server khi lấy danh sách project" });
+//     }
+// });
+
+app.get("/api/projects", authMiddleware, async (req, res) => {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "10", 10);
     const search = (req.query.search || "").trim();
@@ -111,27 +289,35 @@ app.get("/api/projects", async(req, res) => {
         if (search) {
             countRes = await pool.query(
                 `SELECT COUNT(*) FROM projects
-         WHERE name ILIKE '%' || $1 || '%' OR CAST(id AS TEXT) = $1`, [search]
+                 WHERE user_id = $1
+                   AND (name ILIKE '%' || $2 || '%' OR CAST(id AS TEXT) = $2)`,
+                [req.userId, search]
             );
             listRes = await pool.query(
                 `SELECT * FROM projects
-         WHERE name ILIKE '%' || $1 || '%' OR CAST(id AS TEXT) = $1
-         ORDER BY created_at DESC
-         LIMIT $2 OFFSET $3`, [search, limit, offset]
+                 WHERE user_id = $1
+                   AND (name ILIKE '%' || $2 || '%' OR CAST(id AS TEXT) = $2)
+                 ORDER BY created_at DESC
+                 LIMIT $3 OFFSET $4`,
+                [req.userId, search, limit, offset]
             );
         } else {
-            countRes = await pool.query("SELECT COUNT(*) FROM projects");
+            countRes = await pool.query(
+                "SELECT COUNT(*) FROM projects WHERE user_id = $1",
+                [req.userId]
+            );
             listRes = await pool.query(
                 `SELECT * FROM projects
-         ORDER BY created_at DESC
-         LIMIT $1 OFFSET $2`, [limit, offset]
+                 WHERE user_id = $1
+                 ORDER BY created_at DESC
+                 LIMIT $2 OFFSET $3`,
+                [req.userId, limit, offset]
             );
         }
 
         const total = parseInt(countRes.rows[0].count, 10);
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
-        // Get variant counts for each project
         const projectsWithCounts = await Promise.all(
             listRes.rows.map(async (project) => {
                 const variantCountRes = await pool.query(
@@ -165,47 +351,97 @@ app.get("/api/projects", async(req, res) => {
 });
 
 
+
 // Lấy thông tin project + danh sách biến thể
-app.get("/api/projects/:id", async(req, res) => {
+// app.get("/api/projects/:id", async(req, res) => {
+//     const projectId = parseInt(req.params.id, 10);
+//     if (!projectId) return res.status(400).json({ error: "projectId không hợp lệ" });
+
+//     try {
+//         const projectRes = await pool.query(
+//             "SELECT * FROM projects WHERE id = $1", [projectId]
+//         );
+//         if (projectRes.rows.length === 0) {
+//             return res.status(404).json({ error: "Không tìm thấy project" });
+//         }
+
+
+//         const variantsRes = await pool.query(
+//             `SELECT 
+//           v.id,
+//           v.name,
+//           v.status,
+//           v.created_at,
+//           json_agg(
+//             json_build_object(
+//               'segment_index', vs.segment_index + 1,
+//               'clip_index',    vs.clip_index,
+//               'edit_type',     coalesce(vse.edit_type, 'none'),
+//               'kf_scale',      coalesce(vse.kf_scale, 0),
+//               'kf_position',   coalesce(vse.kf_position, 0),
+//               'kf_rotate',     coalesce(vse.kf_rotate, 0)
+//             )
+//             ORDER BY vs.segment_index
+//           ) AS segments
+//      FROM variants v
+//      JOIN variant_segments vs ON vs.variant_id = v.id
+//      LEFT JOIN variant_segment_edits vse 
+//            ON vse.variant_id = v.id AND vse.segment_index = vs.segment_index
+//      WHERE v.project_id = $1
+//      GROUP BY v.id, v.name, v.status, v.created_at
+//      ORDER BY v.id DESC
+//      `, [projectId]
+//         );
+
+
+//         res.json({
+//             project: projectRes.rows[0],
+//             variants: variantsRes.rows,
+//         });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ error: "Lỗi server khi lấy project" });
+//     }
+// });
+app.get("/api/projects/:id", authMiddleware, async (req, res) => {
     const projectId = parseInt(req.params.id, 10);
     if (!projectId) return res.status(400).json({ error: "projectId không hợp lệ" });
 
     try {
         const projectRes = await pool.query(
-            "SELECT * FROM projects WHERE id = $1", [projectId]
+            "SELECT * FROM projects WHERE id = $1 AND user_id = $2",
+            [projectId, req.userId]
         );
         if (projectRes.rows.length === 0) {
             return res.status(404).json({ error: "Không tìm thấy project" });
         }
 
-
         const variantsRes = await pool.query(
             `SELECT 
-          v.id,
-          v.name,
-          v.status,
-          v.created_at,
-          json_agg(
-            json_build_object(
-              'segment_index', vs.segment_index + 1,
-              'clip_index',    vs.clip_index,
-              'edit_type',     coalesce(vse.edit_type, 'none'),
-              'kf_scale',      coalesce(vse.kf_scale, 0),
-              'kf_position',   coalesce(vse.kf_position, 0),
-              'kf_rotate',     coalesce(vse.kf_rotate, 0)
-            )
-            ORDER BY vs.segment_index
-          ) AS segments
-     FROM variants v
-     JOIN variant_segments vs ON vs.variant_id = v.id
-     LEFT JOIN variant_segment_edits vse 
-           ON vse.variant_id = v.id AND vse.segment_index = vs.segment_index
-     WHERE v.project_id = $1
-     GROUP BY v.id, v.name, v.status, v.created_at
-     ORDER BY v.id DESC
-     `, [projectId]
+              v.id,
+              v.name,
+              v.status,
+              v.created_at,
+              json_agg(
+                json_build_object(
+                  'segment_index', vs.segment_index + 1,
+                  'clip_index',    vs.clip_index,
+                  'edit_type',     coalesce(vse.edit_type, 'none'),
+                  'kf_scale',      coalesce(vse.kf_scale, 0),
+                  'kf_position',   coalesce(vse.kf_position, 0),
+                  'kf_rotate',     coalesce(vse.kf_rotate, 0)
+                )
+                ORDER BY vs.segment_index
+              ) AS segments
+             FROM variants v
+             JOIN variant_segments vs ON vs.variant_id = v.id
+             LEFT JOIN variant_segment_edits vse 
+                   ON vse.variant_id = v.id AND vse.segment_index = vs.segment_index
+             WHERE v.project_id = $1
+             GROUP BY v.id, v.name, v.status, v.created_at
+             ORDER BY v.id DESC`,
+            [projectId]
         );
-
 
         res.json({
             project: projectRes.rows[0],
@@ -216,6 +452,7 @@ app.get("/api/projects/:id", async(req, res) => {
         res.status(500).json({ error: "Lỗi server khi lấy project" });
     }
 });
+
 
 // Sinh thông số edit cho N phân đoạn, dựa trên edit của biến thể trước đó
 // lastVariantEdits: Map { segment_index: { type, s, p, r } }
@@ -333,7 +570,7 @@ function getNextEdit(prev) {
 
 
 // ================= TẠO NHIỀU BIẾN THỂ, ĐỒNG BỘ KIỂU EDIT ================
-app.post("/api/projects/:id/variants", async(req, res) => {
+app.post("/api/projects/:id/variants", authMiddleware, async(req, res) => {
     const projectId = parseInt(req.params.id, 10);
     if (!projectId) {
         return res.status(400).json({ error: "projectId không hợp lệ" });
@@ -344,8 +581,12 @@ app.post("/api/projects/:id/variants", async(req, res) => {
         await client.query("BEGIN");
 
         // 1. Lấy project
-        const projRes = await client.query(
-            "SELECT * FROM projects WHERE id = $1", [projectId]
+        // const projRes = await client.query(
+        //     "SELECT * FROM projects WHERE id = $1", [projectId]
+        // );
+         const projRes = await client.query(
+            "SELECT * FROM projects WHERE id = $1 AND user_id = $2",
+            [projectId, req.userId]
         );
         if (projRes.rows.length === 0) {
             await client.query("ROLLBACK");
@@ -656,15 +897,19 @@ app.post("/api/projects/:id/variants", async(req, res) => {
 
 
 // Xoá project
-app.delete("/api/projects/:id", async(req, res) => {
+app.delete("/api/projects/:id", authMiddleware, async(req, res) => {
     const projectId = parseInt(req.params.id, 10);
     if (!projectId) {
         return res.status(400).json({ error: "projectId không hợp lệ" });
     }
 
     try {
+        // const result = await pool.query(
+        //     "DELETE FROM projects WHERE id = $1 RETURNING id", [projectId]
+        // );
         const result = await pool.query(
-            "DELETE FROM projects WHERE id = $1 RETURNING id", [projectId]
+            "DELETE FROM projects WHERE id = $1 AND user_id = $2",
+            [projectId, req.userId]
         );
 
         if (result.rowCount === 0) {
@@ -680,51 +925,105 @@ app.delete("/api/projects/:id", async(req, res) => {
 });
 
 // Lấy status của tất cả biến thể trong 1 project
-app.get("/api/projects/:id/variants-status", async(req, res) => {
+// app.get("/api/projects/:id/variants-status", async(req, res) => {
+//     const projectId = parseInt(req.params.id, 10);
+//     if (!projectId) {
+//         return res.status(400).json({ error: "projectId không hợp lệ" });
+//     }
+
+//     try {
+//         const rs = await pool.query(
+//             "SELECT id, status FROM variants WHERE project_id = $1 ORDER BY id DESC", [projectId]
+//         );
+//         res.json(rs.rows); // [{ id, status }, ...]
+//     } catch (err) {
+//         console.error(err);
+//         res
+//             .status(500)
+//             .json({ error: "Lỗi server khi lấy status danh sách biến thể" });
+//     }
+// });
+app.get("/api/projects/:id/variants-status", authMiddleware, async (req, res) => {
     const projectId = parseInt(req.params.id, 10);
     if (!projectId) {
         return res.status(400).json({ error: "projectId không hợp lệ" });
     }
 
     try {
-        const rs = await pool.query(
-            "SELECT id, status FROM variants WHERE project_id = $1 ORDER BY id DESC", [projectId]
+        const result = await pool.query(
+            `SELECT v.id, v.status
+             FROM variants v
+             JOIN projects p ON p.id = v.project_id
+             WHERE v.project_id = $1 AND p.user_id = $2
+             ORDER BY v.id DESC`,
+            [projectId, req.userId]
         );
-        res.json(rs.rows); // [{ id, status }, ...]
+        res.json({ variants: result.rows });
     } catch (err) {
         console.error(err);
-        res
-            .status(500)
-            .json({ error: "Lỗi server khi lấy status danh sách biến thể" });
+        res.status(500).json({ error: "Lỗi server khi lấy status biến thể" });
     }
 });
 
 
+
 // Cập nhật status cho 1 biến thể
-app.patch("/api/variants/:id/status", async(req, res) => {
+// app.patch("/api/variants/:id/status", async(req, res) => {
+//     const variantId = parseInt(req.params.id, 10);
+//     const { status } = req.body;
+
+//     if (!variantId) {
+//         return res.status(400).json({ error: "variantId không hợp lệ" });
+//     }
+//     if (typeof status !== "boolean") {
+//         return res.status(400).json({ error: "status phải là boolean (true/false)" });
+//     }
+
+//     try {
+//         const rs = await pool.query(
+//             "UPDATE variants SET status = $1 WHERE id = $2 RETURNING id, status", [status, variantId]
+//         );
+//         if (rs.rowCount === 0) {
+//             return res.status(404).json({ error: "Không tìm thấy biến thể" });
+//         }
+//         res.json(rs.rows[0]); // { id, status }
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ error: "Lỗi server khi cập nhật status biến thể" });
+//     }
+// });
+
+app.patch("/api/variants/:id/status", authMiddleware, async (req, res) => {
     const variantId = parseInt(req.params.id, 10);
-    const { status } = req.body;
+    const { status } = req.body || {};
 
     if (!variantId) {
         return res.status(400).json({ error: "variantId không hợp lệ" });
     }
-    if (typeof status !== "boolean") {
-        return res.status(400).json({ error: "status phải là boolean (true/false)" });
-    }
 
     try {
-        const rs = await pool.query(
-            "UPDATE variants SET status = $1 WHERE id = $2 RETURNING id, status", [status, variantId]
+        const result = await pool.query(
+            `UPDATE variants v
+             SET status = $1
+             FROM projects p
+             WHERE v.id = $2
+               AND v.project_id = p.id
+               AND p.user_id = $3
+             RETURNING v.id, v.status`,
+            [status, variantId, req.userId]
         );
-        if (rs.rowCount === 0) {
-            return res.status(404).json({ error: "Không tìm thấy biến thể" });
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Không tìm thấy biến thể để cập nhật" });
         }
-        res.json(rs.rows[0]); // { id, status }
+
+        res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Lỗi server khi cập nhật status biến thể" });
     }
 });
+
 
 
 

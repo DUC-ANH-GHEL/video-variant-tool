@@ -21,6 +21,10 @@
                     Tạo biến thể video theo logic clip 1.1, 1.2, 2.1… mà không trùng cặp phân đoạn liền kề.
                 </div>
             </div>
+            <div class="user-info">
+                <span id="currentUserEmail" class="user-email">(Chưa đăng nhập)</span>
+                <button id="btnLogout" class="btn-outline small-btn">Đăng xuất</button>
+            </div>
             <div class="pill">
                 <span class="pill-dot"></span> Neon + Node + JS only
             </div>
@@ -155,6 +159,27 @@
 
     <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
+    <!-- Auth Modal -->
+    <div id="authModal" class="auth-modal" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="auth-modal-backdrop" data-auth-close></div>
+        <div class="auth-modal-panel" role="document">
+            <h3 class="auth-modal-title">Đăng nhập / Đăng ký</h3>
+            <div class="auth-form">
+                <div class="field">
+                    <label>Email</label>
+                    <input type="email" id="authEmail" placeholder="you@example.com" />
+                </div>
+                <div class="field">
+                    <label>Mật khẩu</label>
+                    <input type="password" id="authPassword" placeholder="••••••••" />
+                </div>
+                <div class="btn-row" style="margin-top: 16px;">
+                    <button id="authLoginBtn" class="btn-primary">Đăng nhập</button>
+                    <button id="authRegisterBtn" class="btn-outline">Đăng ký</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Confirmation modal (centered popup) -->
     <div id="confirmModal" class="confirm-modal" aria-hidden="true" role="dialog" aria-modal="true">
         <div class="confirm-modal-backdrop" data-confirm-close></div>

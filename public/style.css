@@ -52,8 +52,9 @@ body {
     padding: 14px 14px 12px;
     box-shadow: var(--shadow-card);
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
     margin-bottom: 16px;
 }
 
@@ -1084,4 +1085,76 @@ button:disabled {
     padding: 10px 14px;
     font-size: 13px;
 }
+
+/* ---------------- AUTH MODAL ---------------- */
+.auth-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 110;
+    pointer-events: none;
+}
+.auth-modal.open {
+    display: flex;
+    pointer-events: auto;
+}
+.auth-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.8);
+    backdrop-filter: blur(6px);
+}
+.auth-modal-panel {
+    position: relative;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98));
+    border-radius: 16px;
+    padding: 28px 24px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 25px 70px rgba(2, 6, 23, 0.9);
+    max-width: 360px;
+    width: 90%;
+    z-index: 1;
+}
+.auth-modal-title {
+    margin: 0 0 20px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+}
+.auth-form .field {
+    margin-bottom: 14px;
+}
+.auth-form .btn-row {
+    display: flex;
+    gap: 10px;
+}
+.auth-form .btn-row button {
+    flex: 1;
+}
+
+/* ---------------- USER INFO (Header) ---------------- */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    padding-right: 10px;
+}
+.user-email {
+    font-size: 12px;
+    color: var(--text-muted);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.small-btn {
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+    min-width: auto !important;
+}
+
 .loading-active .app { pointer-events: none; }
