@@ -1,11 +1,12 @@
-// const API_BASE = "http://localhost:3000/api";
-const API_BASE = "/api";
+const API_BASE = "http://localhost:3000/api";
+// const API_BASE = "/api";
 
 
 // form & project detail
 const projectNameInput = document.getElementById("projectName");
 const segmentCountInput = document.getElementById("segmentCount");
 const clipCountInput = document.getElementById("clipCount");
+const segmentOverridesInput = document.getElementById("segmentOverrides");
 const projectIdInput = document.getElementById("projectId");
 const projectInfoDiv = document.getElementById("projectInfo");
 
@@ -77,6 +78,24 @@ function setButtonLoading(button, isLoading, loadingText) {
     }
 }
 
+// Format clip info: default + optional per-segment list
+function formatClipInfo(project) {
+    if (!project) return "";
+    const base = project.clips_per_segment;
+    if (typeof base !== "number") return "";
+
+    const segClips = project.segment_clips;
+    if (!Array.isArray(segClips) || !segClips.length) {
+        // No overrides
+        return String(base);
+    }
+
+    const hasDiff = segClips.some((c) => typeof c === "number" && c !== base);
+    if (!hasDiff) return String(base);
+
+    return `${base} (tùy chỉnh: ${segClips.join(", ")})`;
+}
+
 // ---------- CREATE PROJECT ----------
 btnCreateProject.addEventListener("click", async() => {
     const name = projectNameInput.value.trim();
@@ -88,12 +107,50 @@ btnCreateProject.addEventListener("click", async() => {
         return;
     }
 
+    // Parse overrides string like "3:4, 7:6, 10:8"
+    let segment_clip_overrides = [];
+    if (segmentOverridesInput) {
+        const raw = (segmentOverridesInput.value || "").trim();
+        if (raw) {
+            const parts = raw.split(/[;,]+/);
+            for (const part of parts) {
+                const piece = part.trim();
+                if (!piece) continue;
+                const [segStr, clipsStr] = piece.split(":").map((s) => s && s.trim());
+                const seg = parseInt(segStr, 10);
+                const clips = parseInt(clipsStr, 10);
+                if (
+                    Number.isFinite(seg) &&
+                    Number.isFinite(clips) &&
+                    seg >= 1 &&
+                    seg <= segment_count &&
+                    clips > 0
+                ) {
+                    segment_clip_overrides.push({ segment: seg, clips });
+                }
+            }
+
+            if (raw && segment_clip_overrides.length === 0) {
+                showToast(
+                    "Không đọc được cấu hình clip/segment. Nhập dạng: 7:6, 10:4",
+                    "error"
+                );
+                return;
+            }
+        }
+    }
+
     try {
         setButtonLoading(btnCreateProject, true, "Đang tạo...");
         const res = await fetch(`${API_BASE}/projects`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, segment_count, clips_per_segment }),
+            body: JSON.stringify({
+                name,
+                segment_count,
+                clips_per_segment,
+                segment_clip_overrides,
+            }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -138,9 +195,11 @@ async function loadProject() {
         selectedProjectId = p.id;
         projectIdInput.value = p.id;
 
+        const clipInfo = formatClipInfo(p);
+
         projectInfoDiv.textContent =
             `Project: ${p.name} | ID: ${p.id} | Phân đoạn: ${p.segment_count} | ` +
-            `Clip/đoạn: ${p.clips_per_segment} | Biến thể: ${data.variants.length}`;
+            `Clip/đoạn: ${clipInfo} | Biến thể: ${data.variants.length}`;
 
         highlightSelectedProjectRow();
         renderVariants(data.variants);
@@ -746,7 +805,8 @@ function renderProjectList(projects) {
         const meta = document.createElement("div");
         meta.className = "project-row-meta";
         const variantInfo = p.total_variants ? `${p.completed_variants}/${p.total_variants} biến thể DONE` : "0/0 biến thể DONE";
-        meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${p.clips_per_segment} clip/đoạn • ${variantInfo}`;
+        const clipInfo = formatClipInfo(p);
+        meta.textContent = `ID ${p.id} • ${p.segment_count} đoạn • ${clipInfo} clip/đoạn • ${variantInfo}`;
         li.appendChild(meta);
 
         // click vào cả row để chọn project

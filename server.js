@@ -33,23 +33,68 @@ function shuffle(array) {
 // ========== API ==========
 
 // Tạo project mới
-app.post("/api/projects", async(req, res) => {
+app.post("/api/projects", async (req, res) => {
     try {
-        const { name, segment_count, clips_per_segment } = req.body;
+        const {
+            name,
+            segment_count,
+            clips_per_segment,
+            segment_clip_overrides,
+        } = req.body;
+
         if (!name || !segment_count || !clips_per_segment) {
-            return res.status(400).json({ error: "Thiếu name / segment_count / clips_per_segment" });
+            return res
+                .status(400)
+                .json({ error: "Thiếu name / segment_count / clips_per_segment" });
         }
 
+        const N = parseInt(segment_count, 10);
+        const M = parseInt(clips_per_segment, 10);
+
+        if (!Number.isFinite(N) || N <= 0 || !Number.isFinite(M) || M <= 0) {
+            return res
+                .status(400)
+                .json({ error: "segment_count / clips_per_segment phải là số dương" });
+        }
+
+        // Mặc định: mọi segment đều có M clip
+        let segmentClips = new Array(N).fill(M);
+
+        // Áp dụng override nếu có (segment: 1-based)
+        if (Array.isArray(segment_clip_overrides)) {
+            for (const item of segment_clip_overrides) {
+                if (!item) continue;
+                const seg = parseInt(item.segment, 10);
+                const clips = parseInt(item.clips, 10);
+                if (
+                    Number.isFinite(seg) &&
+                    Number.isFinite(clips) &&
+                    seg >= 1 &&
+                    seg <= N &&
+                    clips > 0
+                ) {
+                    segmentClips[seg - 1] = clips;
+                }
+            }
+        }
+
+        // Ensure the value we pass is a proper JSON string
+        const segmentClipsJson = JSON.stringify(segmentClips);
+        console.log('Creating project with segmentClips:', segmentClipsJson);
+
         const result = await pool.query(
-            `INSERT INTO projects (name, segment_count, clips_per_segment)
-       VALUES ($1, $2, $3)
-       RETURNING id, name, segment_count, clips_per_segment, created_at`, [name, segment_count, clips_per_segment]
+            `INSERT INTO projects (name, segment_count, clips_per_segment, segment_clips)
+             VALUES ($1, $2, $3, $4::jsonb)
+             RETURNING id, name, segment_count, clips_per_segment, segment_clips, created_at`,
+            [name, N, M, segmentClipsJson]
         );
 
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Lỗi server khi tạo project" });
+        res
+            .status(500)
+            .json({ error: "Lỗi server khi tạo project" });
     }
 });
 
@@ -308,7 +353,21 @@ app.post("/api/projects/:id/variants", async(req, res) => {
         }
         const project = projRes.rows[0];
         const N = project.segment_count; // số phân đoạn
-        const M = project.clips_per_segment; // số clip / phân đoạn
+        const M = project.clips_per_segment; // số clip / phân đoạn (mặc định)
+
+        // Nếu có cấu hình clip riêng từng phân đoạn (segment_clips),
+        // dùng nó; nếu không thì mọi phân đoạn = M
+        let segmentClips = [];
+        if (project.segment_clips && Array.isArray(project.segment_clips)) {
+            segmentClips = new Array(N);
+            for (let i = 0; i < N; i++) {
+                const v = project.segment_clips[i];
+                segmentClips[i] =
+                    typeof v === "number" && v > 0 ? v : M;
+            }
+        } else {
+            segmentClips = new Array(N).fill(M);
+        }
 
         // 2. Lấy các cặp clip liền kề đã dùng
         const usedRes = await client.query(
@@ -423,7 +482,8 @@ app.post("/api/projects/:id/variants", async(req, res) => {
             const candidateClipsPerSegment = [];
             for (let seg = 0; seg < N; seg++) {
                 const cands = [];
-                for (let c = 1; c <= M; c++) {
+                const clipsCount = segmentClips[seg] || M; // số clip tại segment này
+                for (let c = 1; c <= clipsCount; c++) {
                     if (nextLevelFor(seg, c) === targetLevel) {
                         cands.push(c);
                     }
