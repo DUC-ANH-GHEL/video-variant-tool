@@ -712,17 +712,14 @@ async function loadProjects(page = 1) {
     }
 }
 
-async function deleteProject(projectId, btnElement) {
-    //   if (!confirm("Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)")) {
-    //     return;
-    //   }
-    const pass = prompt("Nhập mật khẩu để xoá project:");
-    if (pass !== "7246") {
-        showToast("Sai mật khẩu! Không thể xoá.", "error");
-        return;
-    }
-
-    if (!confirm("Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)")) {
+async function deleteProject(projectId, btnElement, projectName) {
+    // Use custom confirm modal instead of prompt/confirm
+    const confirmed = await showConfirmModal(
+        `Xác nhận xoá project: ${projectName || 'ID ' + projectId}`,
+        "Bạn chắc chắn muốn xoá project này? (Toàn bộ biến thể cũng sẽ bị xoá)"
+    );
+    
+    if (!confirmed) {
         return;
     }
 
@@ -794,7 +791,7 @@ function renderProjectList(projects) {
         deleteBtn.textContent = "Xoá";
         deleteBtn.addEventListener("click", (e) => {
             e.stopPropagation(); // không trigger click chọn project
-            deleteProject(p.id, deleteBtn);
+            deleteProject(p.id, deleteBtn, p.name);
         });
 
         header.appendChild(title);
