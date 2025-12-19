@@ -223,20 +223,24 @@ body {
 }
 
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+input[type="email"],
+input[type="password"] {
     width: 100%;
     padding: 9px 11px;
     border-radius: 12px;
     border: 1px solid rgba(30, 64, 175, 0.7);
     background: #020617;
     color: var(--text-strong);
-    font-size: 14px;
+    font-size: 16px; /* >= 16px prevents iOS Safari auto-zoom on focus */
     outline: none;
     transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease, transform 0.06s ease;
 }
 
 input[type="text"]:focus,
-input[type="number"]:focus {
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
     border-color: var(--accent-strong);
     box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.5), 0 0 0 6px rgba(37, 99, 235, 0.16);
     background: #020617;
@@ -690,8 +694,10 @@ button:disabled {
         font-size: 13px;
     }
     input[type="text"],
-    input[type="number"] {
-        font-size: 14px;
+    input[type="number"],
+    input[type="email"],
+    input[type="password"] {
+        font-size: 16px; /* >= 16px prevents iOS Safari auto-zoom on focus */
     }
     .project-row {
         padding: 8px 10px;
