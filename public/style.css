@@ -1163,4 +1163,238 @@ button:disabled {
     min-width: auto !important;
 }
 
+/* Help button */
+.btn-help {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(251, 146, 60, 0.6);
+    background: rgba(251, 146, 60, 0.1);
+    color: #fb923c;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-help:hover {
+    background: rgba(251, 146, 60, 0.25);
+    border-color: rgba(251, 146, 60, 0.9);
+    transform: scale(1.05);
+}
+
 .loading-active .app { pointer-events: none; }
+
+/* ---------------- ONBOARDING TOUR ---------------- */
+.onboarding-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: none;
+    pointer-events: none;
+}
+
+.onboarding-overlay.active {
+    display: block;
+    pointer-events: auto;
+}
+
+.onboarding-backdrop {
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    pointer-events: auto;
+    transition: background 0.3s ease;
+}
+
+/* Full backdrop for centered tooltips (welcome/finish screens) */
+.onboarding-backdrop.full-backdrop {
+    background: rgba(2, 6, 23, 0.85);
+}
+
+/* Spotlight effect - cutout around highlighted element */
+.onboarding-highlight {
+    position: relative;
+    z-index: 301 !important;
+    box-shadow: 
+        0 0 0 4px rgba(251, 146, 60, 0.8),
+        0 0 0 9999px rgba(2, 6, 23, 0.8) !important; /* Large spread creates the dark overlay with cutout */
+    border-radius: 12px;
+    pointer-events: auto !important;
+    animation: onboarding-pulse 2s ease-in-out infinite;
+}
+
+@keyframes onboarding-pulse {
+    0%, 100% { 
+        box-shadow: 
+            0 0 0 4px rgba(251, 146, 60, 0.8),
+            0 0 0 9999px rgba(2, 6, 23, 0.8);
+    }
+    50% { 
+        box-shadow: 
+            0 0 0 6px rgba(251, 146, 60, 1),
+            0 0 0 9999px rgba(2, 6, 23, 0.8);
+    }
+}
+
+.onboarding-tooltip {
+    position: fixed;
+    z-index: 302;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98));
+    border: 1px solid rgba(251, 146, 60, 0.5);
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 340px;
+    width: 90%;
+    box-shadow: 0 25px 70px rgba(2, 6, 23, 0.9), 0 0 40px rgba(251, 146, 60, 0.15);
+    pointer-events: auto;
+    animation: tooltip-appear 0.3s ease-out;
+}
+
+@keyframes tooltip-appear {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.onboarding-step-indicator {
+    font-size: 11px;
+    color: var(--accent-warm);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.onboarding-title {
+    margin: 0 0 10px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.onboarding-title::before {
+    content: "💡";
+}
+
+.onboarding-content {
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+}
+
+.onboarding-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.onboarding-nav {
+    display: flex;
+    gap: 8px;
+}
+
+/* Tooltip arrow */
+.onboarding-tooltip::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98));
+    border: 1px solid rgba(251, 146, 60, 0.5);
+    border-right: none;
+    border-bottom: none;
+    transform: rotate(45deg);
+}
+
+.onboarding-tooltip.arrow-top::after {
+    top: -7px;
+    left: 30px;
+    transform: rotate(45deg);
+}
+
+.onboarding-tooltip.arrow-bottom::after {
+    bottom: -7px;
+    left: 30px;
+    transform: rotate(-135deg);
+}
+
+.onboarding-tooltip.arrow-left::after {
+    left: -7px;
+    top: 30px;
+    transform: rotate(-45deg);
+}
+
+.onboarding-tooltip.arrow-right::after {
+    right: -7px;
+    top: 30px;
+    transform: rotate(135deg);
+}
+
+/* Welcome step - centered */
+.onboarding-tooltip.centered {
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%);
+}
+
+.onboarding-tooltip.centered::after {
+    display: none;
+}
+
+/* Mobile bottom tooltip - fixed at bottom of screen */
+.onboarding-tooltip.mobile-bottom {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 16px !important;
+    left: 16px !important;
+    right: 16px !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: none !important;
+    border-radius: 16px;
+}
+
+.onboarding-tooltip.mobile-bottom::after {
+    display: none;
+}
+
+/* Mobile adjustments */
+@media (max-width: 879px) {
+    .onboarding-tooltip {
+        max-width: calc(100vw - 32px);
+        padding: 16px;
+    }
+    
+    .onboarding-actions {
+        flex-direction: row;
+        gap: 10px;
+    }
+    
+    .onboarding-nav {
+        flex: 1;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+    
+    /* Centered tooltip on mobile */
+    .onboarding-tooltip.centered {
+        top: auto !important;
+        bottom: 16px !important;
+        left: 16px !important;
+        right: 16px !important;
+        width: auto !important;
+        max-width: none !important;
+        transform: none !important;
+    }
+}

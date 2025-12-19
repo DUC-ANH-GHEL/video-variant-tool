@@ -1,5 +1,5 @@
-// const API_BASE = "http://localhost:3000/api";
-const API_BASE = "/api";
+const API_BASE = "http://localhost:3000/api";
+// const API_BASE = "/api";
 
 // ---------- Auth Token Management ----------
 let authToken = localStorage.getItem("authToken") || null;
@@ -185,6 +185,11 @@ async function handleAuth(mode) {
         closeAuthModal();
         showToast(mode === "login" ? "Đăng nhập thành công!" : "Đăng ký thành công!", "success");
         loadProjects(1);
+        
+        // Start onboarding for new users
+        if (mode === "register") {
+            checkAndStartOnboarding(true);
+        }
     } catch (err) {
         showToast(err.message, "error");
     } finally {
@@ -956,6 +961,276 @@ function formatEditLabel(seg) {
         return parts.length ? parts.join(', ') : 'keyframe';
     }
     return '';
+}
+
+
+// ---------- ONBOARDING TOUR ----------
+const onboardingSteps = [
+    {
+        target: null, // centered welcome
+        title: "Chào mừng bạn đến với Video Variant Tool! 🎉",
+        content: "Công cụ này giúp bạn tạo nhiều biến thể video từ các phân đoạn clip, đảm bảo không trùng lặp cặp clip liền kề. Hãy cùng tìm hiểu cách sử dụng nhé!",
+        position: "center"
+    },
+    {
+        target: "#projectName",
+        title: "Bước 1: Nhập tên Project",
+        content: "Đặt tên cho project của bạn. Ví dụ: \"Video 40s - Sản phẩm X\". Tên này giúp bạn dễ dàng quản lý nhiều project khác nhau.",
+        position: "bottom"
+    },
+    {
+        target: "#segmentCount",
+        title: "Bước 2: Số phân đoạn",
+        content: "Nhập số phân đoạn (segment) của video gốc. Ví dụ: video 40 giây có thể chia thành 13 phân đoạn.",
+        position: "bottom"
+    },
+    {
+        target: "#clipCount",
+        title: "Bước 3: Số clip mỗi phân đoạn",
+        content: "Nhập số clip bạn đã quay cho mỗi phân đoạn. Ví dụ: mỗi đoạn có 5 clip khác nhau → nhập 5.",
+        position: "bottom"
+    },
+    {
+        target: "#btnCreateProject",
+        title: "Bước 4: Tạo Project",
+        content: "Nhấn nút này để tạo project. Hệ thống sẽ TỰ ĐỘNG tạo TẤT CẢ các biến thể video hợp lệ (không trùng cặp clip liền kề)!",
+        position: "bottom"
+    },
+    {
+        target: "#projectsList",
+        title: "Bước 5: Danh sách Project",
+        content: "Project vừa tạo sẽ xuất hiện ở đây. Nhấn vào project để xem danh sách các biến thể đã được tạo.",
+        position: "bottom"
+    },
+    {
+        target: "#variantsList",
+        title: "Bước 6: Xem biến thể",
+        content: "Danh sách biến thể hiển thị ở đây. Nhấn vào từng biến thể để xem chi tiết clip cần dùng (ví dụ: 1.2, 2.3, 3.1...) và đánh dấu khi đã tạo xong video.",
+        position: "bottom"
+    },
+    {
+        target: null,
+        title: "Sẵn sàng bắt đầu! 🚀",
+        content: "Bạn đã nắm được cách sử dụng. Hãy bắt đầu tạo project đầu tiên nhé! Double-click vào email ở header để xem lại hướng dẫn.",
+        position: "center"
+    }
+];
+
+let currentOnboardingStep = 0;
+let onboardingOverlay, onboardingTooltip, onboardingTitle, onboardingContent;
+let onboardingCurrentStep, onboardingTotalSteps, onboardingSkip, onboardingPrev, onboardingNext;
+
+function initOnboardingElements() {
+    onboardingOverlay = document.getElementById("onboardingOverlay");
+    onboardingTooltip = document.getElementById("onboardingTooltip");
+    onboardingTitle = document.getElementById("onboardingTitle");
+    onboardingContent = document.getElementById("onboardingContent");
+    onboardingCurrentStep = document.getElementById("onboardingCurrentStep");
+    onboardingTotalSteps = document.getElementById("onboardingTotalSteps");
+    onboardingSkip = document.getElementById("onboardingSkip");
+    onboardingPrev = document.getElementById("onboardingPrev");
+    onboardingNext = document.getElementById("onboardingNext");
+}
+
+let onboardingListenersAttached = false;
+
+function startOnboarding() {
+    initOnboardingElements();
+    if (!onboardingOverlay || !onboardingTotalSteps) {
+        console.warn("Onboarding elements not found");
+        return;
+    }
+    // Setup listeners only once
+    if (!onboardingListenersAttached) {
+        setupOnboardingListeners();
+        onboardingListenersAttached = true;
+    }
+    currentOnboardingStep = 0;
+    onboardingTotalSteps.textContent = onboardingSteps.length;
+    onboardingOverlay.classList.add("active");
+    onboardingOverlay.setAttribute("aria-hidden", "false");
+    showOnboardingStep(0);
+}
+
+function endOnboarding() {
+    // Remove highlight from any element
+    document.querySelectorAll(".onboarding-highlight").forEach(el => {
+        el.classList.remove("onboarding-highlight");
+    });
+    onboardingOverlay.classList.remove("active");
+    onboardingOverlay.setAttribute("aria-hidden", "true");
+    // Mark as completed
+    localStorage.setItem("onboardingCompleted", "true");
+}
+
+function showOnboardingStep(stepIndex) {
+    const step = onboardingSteps[stepIndex];
+    if (!step) return;
+
+    // Remove previous highlight
+    document.querySelectorAll(".onboarding-highlight").forEach(el => {
+        el.classList.remove("onboarding-highlight");
+    });
+
+    // Update content
+    onboardingTitle.textContent = step.title;
+    onboardingContent.textContent = step.content;
+    onboardingCurrentStep.textContent = stepIndex + 1;
+
+    // Update button states
+    onboardingPrev.style.display = stepIndex === 0 ? "none" : "inline-flex";
+    onboardingNext.textContent = stepIndex === onboardingSteps.length - 1 ? "Hoàn tất" : "Tiếp →";
+
+    // Remove all arrow classes
+    onboardingTooltip.classList.remove("arrow-top", "arrow-bottom", "arrow-left", "arrow-right", "centered");
+
+    // Get backdrop element
+    const backdrop = onboardingOverlay.querySelector(".onboarding-backdrop");
+
+    if (step.position === "center" || !step.target) {
+        // Centered tooltip - show full backdrop
+        onboardingTooltip.classList.add("centered");
+        onboardingTooltip.style.top = "";
+        onboardingTooltip.style.left = "";
+        onboardingTooltip.style.transform = "";
+        if (backdrop) backdrop.classList.add("full-backdrop");
+    } else {
+        // Position tooltip near target element - hide full backdrop (spotlight effect from highlight box-shadow)
+        if (backdrop) backdrop.classList.remove("full-backdrop");
+        const targetEl = document.querySelector(step.target);
+        if (targetEl) {
+            targetEl.classList.add("onboarding-highlight");
+            positionTooltip(targetEl, step.position);
+            
+            // Scroll element into view on mobile
+            if (window.innerWidth < 880) {
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
+}
+
+function positionTooltip(targetEl, position) {
+    const isMobile = window.innerWidth < 880;
+    const padding = 16;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // On mobile: always position tooltip at bottom of screen
+    if (isMobile) {
+        onboardingTooltip.classList.add("mobile-bottom");
+        onboardingTooltip.style.top = "auto";
+        onboardingTooltip.style.bottom = `${padding}px`;
+        onboardingTooltip.style.left = `${padding}px`;
+        onboardingTooltip.style.right = `${padding}px`;
+        onboardingTooltip.style.width = "auto";
+        onboardingTooltip.style.maxWidth = "none";
+        onboardingTooltip.style.transform = "none";
+        return;
+    }
+
+    // Desktop positioning
+    const rect = targetEl.getBoundingClientRect();
+    const tooltipRect = onboardingTooltip.getBoundingClientRect();
+    
+    // Reset mobile styles
+    onboardingTooltip.classList.remove("mobile-bottom");
+    onboardingTooltip.style.bottom = "";
+    onboardingTooltip.style.right = "";
+    onboardingTooltip.style.width = "";
+    onboardingTooltip.style.maxWidth = "";
+
+    let top, left;
+
+    switch (position) {
+        case "top":
+            top = rect.top - tooltipRect.height - padding;
+            left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+            onboardingTooltip.classList.add("arrow-bottom");
+            break;
+        case "bottom":
+            top = rect.bottom + padding;
+            left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+            onboardingTooltip.classList.add("arrow-top");
+            break;
+        case "left":
+            top = rect.top + rect.height / 2 - tooltipRect.height / 2;
+            left = rect.left - tooltipRect.width - padding;
+            onboardingTooltip.classList.add("arrow-right");
+            break;
+        case "right":
+            top = rect.top + rect.height / 2 - tooltipRect.height / 2;
+            left = rect.right + padding;
+            onboardingTooltip.classList.add("arrow-left");
+            break;
+    }
+
+    // Keep tooltip within viewport
+    if (left < padding) left = padding;
+    if (left + tooltipRect.width > viewportWidth - padding) {
+        left = viewportWidth - tooltipRect.width - padding;
+    }
+    if (top < padding) top = padding;
+    if (top + tooltipRect.height > viewportHeight - padding) {
+        top = viewportHeight - tooltipRect.height - padding;
+    }
+
+    onboardingTooltip.style.top = `${top}px`;
+    onboardingTooltip.style.left = `${left}px`;
+    onboardingTooltip.style.transform = "none";
+}
+
+// Setup onboarding event listeners (called after elements are initialized)
+function setupOnboardingListeners() {
+    if (!onboardingSkip || !onboardingPrev || !onboardingNext) return;
+    
+    onboardingSkip.addEventListener("click", endOnboarding);
+
+    onboardingPrev.addEventListener("click", () => {
+        if (currentOnboardingStep > 0) {
+            currentOnboardingStep--;
+            showOnboardingStep(currentOnboardingStep);
+        }
+    });
+
+    onboardingNext.addEventListener("click", () => {
+        if (currentOnboardingStep < onboardingSteps.length - 1) {
+            currentOnboardingStep++;
+            showOnboardingStep(currentOnboardingStep);
+        } else {
+            endOnboarding();
+            showToast("Hướng dẫn hoàn tất! Chúc bạn sử dụng vui vẻ 🎉", "success");
+        }
+    });
+}
+
+// Recalculate tooltip position on window resize
+window.addEventListener("resize", () => {
+    if (onboardingOverlay && onboardingOverlay.classList.contains("active")) {
+        showOnboardingStep(currentOnboardingStep);
+    }
+});
+
+// Check if should show onboarding after successful registration
+function checkAndStartOnboarding(isNewUser = false) {
+    if (isNewUser || !localStorage.getItem("onboardingCompleted")) {
+        // Small delay to let the UI settle
+        setTimeout(() => {
+            startOnboarding();
+        }, 500);
+    }
+}
+
+// Help button to restart onboarding
+const btnHelp = document.getElementById("btnHelp");
+if (btnHelp) {
+    btnHelp.addEventListener("click", () => {
+        if (authToken) {
+            startOnboarding();
+        } else {
+            showToast("Vui lòng đăng nhập trước.", "info");
+        }
+    });
 }
 
 

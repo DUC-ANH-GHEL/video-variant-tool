@@ -22,6 +22,7 @@
                 </div>
             </div>
             <div class="user-info">
+                <button id="btnHelp" class="btn-help" title="Hướng dẫn sử dụng">❓</button>
                 <span id="currentUserEmail" class="user-email">(Chưa đăng nhập)</span>
                 <button id="btnLogout" class="btn-outline small-btn">Đăng xuất</button>
             </div>
@@ -735,6 +736,25 @@
             }
         })();
     </script>
+
+    <!-- Onboarding Tour -->
+    <div id="onboardingOverlay" class="onboarding-overlay" aria-hidden="true">
+        <div class="onboarding-backdrop"></div>
+        <div id="onboardingTooltip" class="onboarding-tooltip">
+            <div class="onboarding-step-indicator">
+                <span id="onboardingCurrentStep">1</span> / <span id="onboardingTotalSteps">5</span>
+            </div>
+            <h4 id="onboardingTitle" class="onboarding-title">Chào mừng!</h4>
+            <p id="onboardingContent" class="onboarding-content">Nội dung hướng dẫn</p>
+            <div class="onboarding-actions">
+                <button id="onboardingSkip" class="btn-outline small-btn">Bỏ qua</button>
+                <div class="onboarding-nav">
+                    <button id="onboardingPrev" class="btn-outline small-btn">← Trước</button>
+                    <button id="onboardingNext" class="btn-primary small-btn">Tiếp →</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
