@@ -1,5 +1,5 @@
-const API_BASE = "http://localhost:3000/api";
-// const API_BASE = "/api";
+// const API_BASE = "http://localhost:3000/api";
+const API_BASE = "/api";
 
 // ---------- Auth Token Management ----------
 let authToken = localStorage.getItem("authToken") || null;
